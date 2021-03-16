@@ -215,6 +215,10 @@ const textureAtlasMap = {
     darkOakSampling: { x: 36, y: 28, width: 1, height: 1},
     birchSampling: { x: 36, y: 24, width: 1, height: 1},
     /**
+     * leaves
+     */
+    leaf: { x: 24, y: 0, width: 1, height: 1},
+    /**
      * ores
      */
     diamondOre: { x: 13, y: 28, width: 1, height: 1},
@@ -364,11 +368,11 @@ class Item extends Panel {
 
     clone(){
         const clone = new Item(this.name, this.texture, this.textureMeta, this.type, this.setup);
-        // clone.x = this.x;
-        // clone.y = this.y;
-        // clone.width = this.width;
-        // clone.height = this.height;
-        // clone.stack = this.stack;
+        clone.x = this.x;
+        clone.y = this.y;
+        clone.width = this.width;
+        clone.height = this.height;
+        clone.stack = this.stack;
         return clone;
     }
 
@@ -848,7 +852,7 @@ class CoalOre extends Block {
         super(CoalOre.NAME, x, y, "atlas", textureAtlasMap.coalOre, Item.TYPE_PICKAXE, world, {
             resistance: 425,
             minTool: Item.CAN_BREAK_STONE,
-            getDrop: (tool) => new Iron()
+            getDrop: (tool) => new Coal()
         });
     }
 }
@@ -930,6 +934,53 @@ class SmaragdBlock extends Block {
     constructor(x, y, world) {
         super("SmaragdBlock", x, y, "atlas", textureAtlasMap.smaragdBlock, Item.TYPE_PICKAXE, world, {
             resistance: 400,
+        });
+    }
+}
+
+/**
+ * wod
+ */
+class OakLog extends Block {
+    constructor(x, y, world) {
+        super("OakLog", x, y, "atlas", textureAtlasMap.oaklog, Item.TYPE_AXE, world, {
+            resistance: 100,
+            solid: false
+        });
+    }
+}
+
+class PakPlank extends Block {
+    constructor(x, y, world) {
+        super("PakPlank", x, y, "atlas", textureAtlasMap.oakPlank, Item.TYPE_AXE, world, {
+            resistance: 100,
+            solid: false
+        });
+    }
+}
+
+class DarkoakLog extends Block {
+    constructor(x, y, world) {
+        super("OakLog", x, y, "atlas", textureAtlasMap.darkOakLog, Item.TYPE_AXE, world, {
+            resistance: 100,
+            solid: false
+        });
+    }
+}
+
+class DarkoakPlank extends Block {
+    constructor(x, y, world) {
+        super("DarkOakPlank", x, y, "atlas", textureAtlasMap.darkOakPlank, Item.TYPE_AXE, world, {
+            resistance: 100,
+            layer: 1
+        });
+    }
+}
+
+class Leaf extends Block {
+    constructor(x, y, world) {
+        super("Leaf", x, y, "atlas", textureAtlasMap.leaf, Item.TYPE_AXE, world, {
+            resistance: 50,
         });
     }
 }

@@ -908,8 +908,8 @@ class Hitbox {
 
 class Player extends Entity {
 
-    constructor(game, x = 0, y = 53     , texture = "steve",  hitbox = new Hitbox(0.1, -0.2, 0.8, 1.8)){
-        super(x, y, 1, 2, texture, textureAtlasMap.steve, hitbox, game, true, true);
+    constructor(game, x = 0, y = 53, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
+        super(x, y, 0.9, 1.8, texture, textureAtlasMap.steve, hitbox, game, true, true);
         this.controller = new KeyboardController(this);
         this.leftMouseDown = false;
         this.rightMouseDown = false;
@@ -1086,7 +1086,10 @@ class Game {
     }
 
     mousemove(e){
+        // console.log(e.originalEvent);
         this.mouse = e;
+        this.mouseX = e.originalEvent.offsetX;
+        this.mouseY = e.originalEvent.offsetY;
         this.callInputEvent("mousemove", e);
     }
 
@@ -1201,12 +1204,10 @@ class Game {
             return null;
         }
         const center = this.activePlayer.hitbox.center;
-        const mouse = this.camera.screenToWorld(new Point(this.mouse.offsetX, this.mouse.offsetY), this.drawer.screen);
+        const mouse = this.camera.screenToWorld(new Point(this.mouseX, this.mouseY), this.drawer.screen);
         let distance = mouse.distanceFrom(center);
         distance = Math.min(this.playerReach, distance);
-
         const coords = center.add(new Point(distance, distance).multiply(mouse.subtract(center).uniform));
-        
         return coords;
     }
 
@@ -1586,8 +1587,44 @@ class World{
                 }
             }
         }
-        
 
+        const tree = [
+            [null, "Leaf", "Leaf", null, null],
+            [null, "Leaf", "Leaf", "Leaf", null],
+            ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
+            ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
+            ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
+            ["Leaf", "Leaf", "Oaklog", "Leaf", "Leaf"],
+            ["Leaf", "Leaf", "Oaklog", "Leaf", null],
+            [null,    "Leaf", "Oaklog", "Leaf", null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+        ]
+        /**
+         * trees
+         */
+        
+        let treeX = x % 13;
+
+        if(x < 0){
+            treeX += 5;
+        }
+        const treeXOrigin = x - treeX;
+
+        const xTreeNoise = Noise.noise((treeXOrigin + 2) * 0.03, 0);
+        const treeYOrigin = Math.round(50 + xTreeNoise * 10);
+        const treeY = (y - treeYOrigin) * -1 + tree.length
+
+        if(tree?.[treeY]?.[treeX]) {
+            const treeBlockType = tree?.[treeY]?.[treeX];
+            if(treeBlockType){
+                blockOnSurface = true;
+            }
+            switch(treeBlockType){
+                case "Leaf": blocks[0] = new Leaf(x, y, this); break;
+                case "Oaklog": blocks[0] = new OakLog(x, y, this); break;
+            }
+        }
 
         
         if(y > surfaceLevel && !blockOnSurface) return null; //air
@@ -1635,9 +1672,8 @@ class World{
             }
         ]
 
-        // console.log(noise);
         for (const ore of ores) {
-            if(y < ore.minHeight || y > ore.maxHeight){
+            if(y < ore.minHeight || y > ore.maxHeight || y > surfaceLevel){
                 continue;
             }
             if((noise + ore.offset) % 1 < ore.probability){
@@ -1659,8 +1695,8 @@ class World{
         let caveNoise2 = Noise.noise(x / 50, (y + 10) / 25) - 0.7;
         const margin = 0.13
         let cave = false;
-        cave = (caveNoise1 > -margin && caveNoise1 < margin) || (caveNoise2 > -margin && caveNoise2 < margin)
-
+        cave = ((caveNoise1 > -margin && caveNoise1 < margin) || (caveNoise2 > -margin && caveNoise2 < margin));
+        cave &=  y < surfaceLevel;
         /**
          * bedrock
          */
