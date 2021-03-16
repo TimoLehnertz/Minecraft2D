@@ -302,6 +302,13 @@ class Drawer{
         if(x > screen.width || x + width < 0 || y > screen.height || y + height < 0){
             return;
         }
+        const round = false;
+        if(round){
+            x = Math.round(x);
+            y = Math.round(y);
+            width = Math.round(width);
+            height = Math.round(height);
+        }
         // if(rotation !== 0){
         //     this.ctx.translate(x + width / 2, y + height / 2);
         //     this.ctx.rotate(rotation);
@@ -312,7 +319,7 @@ class Drawer{
         //     this.ctx.translate(-(x + width / 2), -(y + height / 2));
         // } else{
             try {
-                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width + 0.6, height + 0.6);
+                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width + 0.6, height + 0);
             } catch (error) {
                 // console.log(texture);
                 // console.log(error);

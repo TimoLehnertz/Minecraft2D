@@ -1,5 +1,6 @@
 
 const tileWidth = 16;
+let texturepack = "atlas1";
 //height: 31
 //width:  55
 const textureAtlasMap = {
@@ -28,12 +29,7 @@ const textureAtlasMap = {
     /**
      * Wood
      */
-    woodenAxe: {
-        x: 49,
-        y: 5,
-        width: 1,
-        height: 1
-    },
+    woodenAxe: { x: 49, y: 5, width: 1, height: 1},
     woodenHoe: {
         x: 49,
         y: 6,
@@ -52,21 +48,11 @@ const textureAtlasMap = {
         width: 1,
         height: 1
     },
-    woodenSword: {
-        x: 40,
-        y: 9,
-        width: 1,
-        height: 1
-    },
+    woodenSword: { x: 49, y: 9, width: 1, height: 1},
     /**
      * stone
      */
-    stoneAxe: {
-        x: 49,
-        y: 26,
-        width: 1,
-        height: 1
-    },
+    stoneAxe: { x: 48, y: 26, width: 1, height: 1},
     stoneHoe: {
         x: 49,
         y: 27,
@@ -217,7 +203,7 @@ const textureAtlasMap = {
     /**
      * leaves
      */
-    leaf: { x: 24, y: 0, width: 1, height: 1},
+    leaf: { x: 0, y: 0, width: 1, height: 1},
     /**
      * ores
      */
@@ -282,13 +268,72 @@ class Item extends Panel {
                 ["iron", "iron", "iron"],
             ]
         }, {
-            getBlock: () => new new StoneAxe(),
+            getResult: () => new CraftingTable(),
+            amount: 1,//optional default 1
             recipe: [
-                [null, "CobbleStone", "CobbleStone"],
-                [null, "stick", "CobbleStone"],
+                [null, null, null],
+                [null, "oakPlank", "oakPlank"],
+                [null, "oakPlank", "oakPlank"],
+            ]
+        },{
+            getResult: () => new Furnance(),
+            recipe: [
+                ["Cobblestone", "Cobblestone", "Cobblestone"],
+                ["Cobblestone", null, "Cobblestone"],
+                ["Cobblestone", "Cobblestone", "Cobblestone"]
+            ],
+        }, {
+            getResult: () => new OakPlank(),
+            recipe: [
+                [null, null, null],
+                [null, "OakLog", null],
+                [null, null, null]
+            ],
+            amount: 4
+        }, {
+            getResult: () => new Stick(),
+            recipe: [
+                [null, null, null],
+                [null, "OakPlank", null],
+                [null, "OakPlank", null]
+            ],
+            amount: 4
+        }, {
+            getResult: () => new WoodenAxe(),
+            recipe: [
+                [null, "OakPlank", "OakPlank"],
+                [null, "stick", "OakPlank"],
                 [null, "stick", null]
             ],
-        }
+        },{
+            getResult: () => new WoodenPickaxe(),
+            recipe: [
+                ["OakPlank", "OakPlank", "OakPlank"],
+                [null, "stick", null],
+                [null, "stick", null]
+            ],
+        },{
+            getResult: () => new WoodenSword(),
+            recipe: [
+                [null, "OakPlank", null],
+                [null, "OakPlank", null],
+                [null, "stick", null]
+            ],
+        },{
+            getResult: () => new WoodenHoe(),
+            recipe: [
+                [null, "OakPlank", "OakPlank"],
+                [null, "stick", null],
+                [null, "stick", null]
+            ],
+        },{
+            getResult: () => new WoodenShovel(),
+            recipe: [
+                [null, "OakPlank", null],
+                [null, "stick", null],
+                [null, "stick", null]
+            ],
+        },
     ]
 
     
@@ -317,7 +362,7 @@ class Item extends Panel {
         this.setup = setup;
 
         this.name = name;
-        this.texture = texture ?? "atlas";
+        this.texture = texture ?? texturepack;
         this.textureMeta = textureMeta;
         this.type = type;
      
@@ -386,16 +431,16 @@ class Item extends Panel {
             for (let xOffset = -3; xOffset <= 3; xOffset++) {
                 for (let yOffset = -3; yOffset <= 3; yOffset++) {
                     const offsetted = Item.getOffsetedRecipe(ingredients, xOffset, yOffset);
-                    countA = Item.countIngredients(offsetted);
+                    const countA = Item.countIngredients(offsetted);
                     if(countB !== countA){
                         continue;
                     }
                     const match = Item.recipeMatch(recipe.recipe, offsetted);
                     if(match === countB){
-                        // console.log("offseted: ");
-                        // console.log(offsetted);
                         const res = recipe.getResult();
-                        return res.stack = recipe.amount ?? 1;
+                        res.stack = recipe.amount ?? 1;
+                        console.log("crafting " + res.name);
+                        return res;
                     }
                 }
             }
@@ -421,7 +466,7 @@ class Item extends Panel {
     }
 
     static countIngredients(recipe){
-        let count = 0; 
+        let count = 0;
         for (const row of recipe) {
             for (const item of row) {
                 if(item){
@@ -439,7 +484,7 @@ class Item extends Panel {
                 if(!a[x][y] || !b[x][y]){
                     continue;
                 }
-                if(a[x][y] === b[x][y]){
+                if(a[x][y].toLowerCase() === b[x][y].toLowerCase()){
                     matched++;
                 }
             }
@@ -455,7 +500,6 @@ class Block extends Item {
         this.itemSetup = itemSetup;
         if(setup === undefined){
             setup = {};
-
         }
         this.setup = setup;
 
@@ -472,6 +516,7 @@ class Block extends Item {
         this.getDrop = setup.getDrop ?? (tool => this);
         this.canBeReplaced = setup.canBeReplaced ?? false;
         this.indestructable = setup.indestructable ?? false;
+        this.onrightclick = setup.onrightclick ?? (() => console.log("1"));
         this.layer = setup.layer ?? 0;
         
         this.hitbox = setup.hitbox ?? new Hitbox(0, 0, 1, 1);
@@ -491,7 +536,7 @@ class Block extends Item {
         if(!this.visible) {
             return;
         }
-        const texName = "atlas";
+        const texName = texturepack;
         const screen = camera.worldToScreen(this.pos, drawer.screen);
 
         drawer.draw(texName, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
@@ -561,6 +606,8 @@ class Block extends Item {
         cpy.stack = this.stack;
         cpy.width = this.width;
         cpy.height = this.height;
+        cpy.solid = this.solid;
+        cpy.onrightclick = this.onrightclick;
         return cpy;
     }
 }
@@ -573,13 +620,13 @@ class Block extends Item {
  */
  class Hand extends Item {
     constructor(){
-        super("Hand", "atlas", textureAtlasMap.hand, Item.TYPE_NONE, {});
+        super("Hand", texturepack, textureAtlasMap.hand, Item.TYPE_NONE, {});
     }
 }
 
 class WoodenPickaxe extends Item {
     constructor(){
-        super("Wooden_pickaxe", "atlas", textureAtlasMap.woodenPickaxe, Item.TYPE_PICKAXE, {
+        super("Wooden_pickaxe", texturepack, textureAtlasMap.woodenPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_WOOD,
             breakLevel: Item.CAN_BREAK_STONE
         });
@@ -588,7 +635,7 @@ class WoodenPickaxe extends Item {
 
 class WoodenAxe extends Item {
     constructor(){
-        super("Wooden_axe", "atlas", textureAtlasMap.woodenAxe, Item.TYPE_AXE, {
+        super("Wooden_axe", texturepack, textureAtlasMap.woodenAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_WOOD,
         });
     }
@@ -596,7 +643,7 @@ class WoodenAxe extends Item {
 
 class WoodenShovel extends Item {
     constructor(){
-        super("Wooden_shovel", "atlas", textureAtlasMap.woodenShovel, Item.TYPE_SHOVEL, {
+        super("Wooden_shovel", texturepack, textureAtlasMap.woodenShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_WOOD,
         });
     }
@@ -604,7 +651,7 @@ class WoodenShovel extends Item {
 
 class WoodenSword extends Item {
     constructor(){
-        super("Wooden_sword", "atlas", textureAtlasMap.woodenSword, Item.TYPE_SWORD, {
+        super("Wooden_sword", texturepack, textureAtlasMap.woodenSword, Item.TYPE_SWORD, {
             attackDmg: 3
         });
     }
@@ -612,7 +659,7 @@ class WoodenSword extends Item {
 
 class WoodenHoe extends Item {
     constructor(){
-        super("Wooden_hoe", "atlas", textureAtlasMap.woodenHoe, Item.TYPE_HOE, {
+        super("Wooden_hoe", texturepack, textureAtlasMap.woodenHoe, Item.TYPE_HOE, {
         });
     }
 }
@@ -622,7 +669,7 @@ class WoodenHoe extends Item {
  */
 class StonePickaxe extends Item {
     constructor(){
-        super("Stone_pickaxe", "atlas", textureAtlasMap.stonePickaxe, Item.TYPE_PICKAXE, {
+        super("Stone_pickaxe", texturepack, textureAtlasMap.stonePickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_STONE,
             breakLevel: Item.CAN_BREAK_STONE
         });
@@ -631,7 +678,7 @@ class StonePickaxe extends Item {
 
 class StoneAxe extends Item {
     constructor(){
-        super("Stone_axe", "atlas", textureAtlasMap.stoneAxe, Item.TYPE_AXE, {
+        super("Stone_axe", texturepack, textureAtlasMap.stoneAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_STONE,
         });
     }
@@ -639,7 +686,7 @@ class StoneAxe extends Item {
 
 class StoneShovel extends Item {
     constructor(){
-        super("Stone_shovel", "atlas", textureAtlasMap.stoneShovel, Item.TYPE_SHOVEL, {
+        super("Stone_shovel", texturepack, textureAtlasMap.stoneShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_STONE,
         });
     }
@@ -647,7 +694,7 @@ class StoneShovel extends Item {
 
 class StoneSword extends Item {
     constructor(){
-        super("Stone_sword", "atlas", textureAtlasMap.stoneSword, Item.TYPE_SWORD, {
+        super("Stone_sword", texturepack, textureAtlasMap.stoneSword, Item.TYPE_SWORD, {
             attackDmg: 4
         });
     }
@@ -655,7 +702,7 @@ class StoneSword extends Item {
 
 class StoneHoe extends Item {
     constructor(){
-        super("Wooden_hoe", "atlas", textureAtlasMap.stoneHoe, Item.TYPE_HOE, {
+        super("Wooden_hoe", texturepack, textureAtlasMap.stoneHoe, Item.TYPE_HOE, {
         });
     }
 }
@@ -665,7 +712,7 @@ class StoneHoe extends Item {
  */
 class IronPickaxe extends Item {
     constructor(){
-        super("Iron_pickaxe", "atlas", textureAtlasMap.ironPickaxe, Item.TYPE_PICKAXE, {
+        super("Iron_pickaxe", texturepack, textureAtlasMap.ironPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_IRON,
             breakLevel: Item.CAN_BREAK_DIAMONDS
         });
@@ -674,7 +721,7 @@ class IronPickaxe extends Item {
 
 class IronAxe extends Item {
     constructor(){
-        super("Iron_axe", "atlas", textureAtlasMap.ironAxe, Item.TYPE_AXE, {
+        super("Iron_axe", texturepack, textureAtlasMap.ironAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_STONE,
         });
     }
@@ -682,7 +729,7 @@ class IronAxe extends Item {
 
 class IronShovel extends Item {
     constructor(){
-        super("Iron_shovel", "atlas", textureAtlasMap.ironShovel, Item.TYPE_SHOVEL, {
+        super("Iron_shovel", texturepack, textureAtlasMap.ironShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_IRON,
         });
     }
@@ -690,7 +737,7 @@ class IronShovel extends Item {
 
 class IronSword extends Item {
     constructor(){
-        super("Iron_sword", "atlas", textureAtlasMap.ironSword, Item.TYPE_SWORD, {
+        super("Iron_sword", texturepack, textureAtlasMap.ironSword, Item.TYPE_SWORD, {
             attackDmg: 5
         });
     }
@@ -698,7 +745,7 @@ class IronSword extends Item {
 
 class IronHoe extends Item {
     constructor(){
-        super("Iron_hoe", "atlas", textureAtlasMap.ironHoe, Item.TYPE_HOE, {
+        super("Iron_hoe", texturepack, textureAtlasMap.ironHoe, Item.TYPE_HOE, {
         });
     }
 }
@@ -708,7 +755,7 @@ class IronHoe extends Item {
  */
 class GoldPickaxe extends Item {
     constructor(){
-        super("Gold_pickaxe", "atlas", textureAtlasMap.goldPickaxe, Item.TYPE_PICKAXE, {
+        super("Gold_pickaxe", texturepack, textureAtlasMap.goldPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_GOLD,
             breakLevel: Item.CAN_BREAK_DIAMONDS
         });
@@ -717,7 +764,7 @@ class GoldPickaxe extends Item {
 
 class GoldAxe extends Item {
     constructor(){
-        super("Gold_axe", "atlas", textureAtlasMap.goldAxe, Item.TYPE_AXE, {
+        super("Gold_axe", texturepack, textureAtlasMap.goldAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_GOLD,
         });
     }
@@ -725,7 +772,7 @@ class GoldAxe extends Item {
 
 class GoldShovel extends Item {
     constructor(){
-        super("Gold_shovel", "atlas", textureAtlasMap.goldSword, Item.TYPE_SHOVEL, {
+        super("Gold_shovel", texturepack, textureAtlasMap.goldSword, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_GOLD,
         });
     }
@@ -733,7 +780,7 @@ class GoldShovel extends Item {
 
 class GoldSword extends Item {
     constructor(){
-        super("Gold_sword", "atlas", textureAtlasMap.goldSword, Item.TYPE_SWORD, {
+        super("Gold_sword", texturepack, textureAtlasMap.goldSword, Item.TYPE_SWORD, {
             attackDmg: 5
         });
     }
@@ -741,7 +788,7 @@ class GoldSword extends Item {
 
 class GoldHoe extends Item {
     constructor(){
-        super("Gold_hoe", "atlas", textureAtlasMap.goldHoe, Item.TYPE_HOE, {
+        super("Gold_hoe", texturepack, textureAtlasMap.goldHoe, Item.TYPE_HOE, {
         });
     }
 }
@@ -751,7 +798,7 @@ class GoldHoe extends Item {
  */
 class DiamondPickaxe extends Item {
     constructor(){
-        super("Diamond_pickaxe", "atlas", textureAtlasMap.diamondPickaxe, Item.TYPE_PICKAXE, {
+        super("Diamond_pickaxe", texturepack, textureAtlasMap.diamondPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_DIAMOND,
             breakLevel: Item.CAN_BREAK_OBSIDIAN
         });
@@ -760,7 +807,7 @@ class DiamondPickaxe extends Item {
 
 class DiamondAxe extends Item {
     constructor(){
-        super("Diamond_axe", "atlas", textureAtlasMap.diamondAxe, Item.TYPE_AXE, {
+        super("Diamond_axe", texturepack, textureAtlasMap.diamondAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_DIAMOND,
         });
     }
@@ -768,7 +815,7 @@ class DiamondAxe extends Item {
 
 class DiamondShovel extends Item {
     constructor(){
-        super("Diamond_shovel", "atlas", textureAtlasMap.diamondShovel, Item.TYPE_SHOVEL, {
+        super("Diamond_shovel", texturepack, textureAtlasMap.diamondShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_DIAMOND,
         });
     }
@@ -776,7 +823,7 @@ class DiamondShovel extends Item {
 
 class DiamondSword extends Item {
     constructor(){
-        super("Diamond_sword", "atlas", textureAtlasMap.diamondSword, Item.TYPE_SWORD, {
+        super("Diamond_sword", texturepack, textureAtlasMap.diamondSword, Item.TYPE_SWORD, {
             attackDmg: 7
         });
     }
@@ -784,7 +831,7 @@ class DiamondSword extends Item {
 
 class DiamondHoe extends Item {
     constructor(){
-        super("Diamond_hoe", "atlas", textureAtlasMap.diamondHoe, Item.TYPE_HOE, {
+        super("Diamond_hoe", texturepack, textureAtlasMap.diamondHoe, Item.TYPE_HOE, {
         });
     }
 }
@@ -795,21 +842,21 @@ class DiamondHoe extends Item {
 class GrassBlock extends Block {
     static NAME = "Grass";
     constructor(x, y, world) {
-        super(GrassBlock.NAME, x, y, "atlas", textureAtlasMap.grass, Item.TYPE_SHOVEL, world);
+        super(GrassBlock.NAME, x, y, texturepack, textureAtlasMap.grass, Item.TYPE_SHOVEL, world);
     }
 }
 
 class DirtBlock extends Block {
     static NAME = "Dirt";
     constructor(x, y, world) {
-        super(DirtBlock.NAME, x, y, "atlas", textureAtlasMap.dirt, Item.TYPE_SHOVEL, world);
+        super(DirtBlock.NAME, x, y, texturepack, textureAtlasMap.dirt, Item.TYPE_SHOVEL, world);
     }
 }
 
 class Cobblestone extends Block {
     static NAME = "Cobblestone";
     constructor(x, y, world) {
-        super(Cobblestone.NAME, x, y, "atlas", textureAtlasMap.cobble, Item.TYPE_PICKAXE, world, {
+        super(Cobblestone.NAME, x, y, texturepack, textureAtlasMap.cobble, Item.TYPE_PICKAXE, world, {
             resistance: 400,
             minTool: Item.CAN_BREAK_STONE
         });
@@ -818,7 +865,7 @@ class Cobblestone extends Block {
 
 class Bedrock extends Block {
     constructor(x, y, world) {
-        super("Bedrock", x, y, "atlas", textureAtlasMap.bedrock, Item.TYPE_HOE, world, {
+        super("Bedrock", x, y, texturepack, textureAtlasMap.bedrock, Item.TYPE_HOE, world, {
             resistance: 1000000000000,
             minTool: 100
         });
@@ -828,7 +875,7 @@ class Bedrock extends Block {
 class Stone extends Block {
     static NAME = "Stone";
     constructor(x, y, world) {
-        super(Stone.NAME, x, y, "atlas", textureAtlasMap.stone, Item.TYPE_PICKAXE, world, {
+        super(Stone.NAME, x, y, texturepack, textureAtlasMap.stone, Item.TYPE_PICKAXE, world, {
             resistance: 400,
             minTool: Item.CAN_BREAK_STONE,
             getDrop: () => new Cobblestone()
@@ -839,7 +886,7 @@ class Stone extends Block {
 class IronOre extends Block {
     static NAME = "Ironore";
     constructor(x, y, world) {
-        super(IronOre.NAME, x, y, "atlas", textureAtlasMap.ironOre, Item.TYPE_PICKAXE, world, {
+        super(IronOre.NAME, x, y, texturepack, textureAtlasMap.ironOre, Item.TYPE_PICKAXE, world, {
             resistance: 450,
             minTool: Item.CAN_BREAK_STONE
         });
@@ -849,7 +896,7 @@ class IronOre extends Block {
 class CoalOre extends Block {
     static NAME = "CoalOre";
     constructor(x, y, world) {
-        super(CoalOre.NAME, x, y, "atlas", textureAtlasMap.coalOre, Item.TYPE_PICKAXE, world, {
+        super(CoalOre.NAME, x, y, texturepack, textureAtlasMap.coalOre, Item.TYPE_PICKAXE, world, {
             resistance: 425,
             minTool: Item.CAN_BREAK_STONE,
             getDrop: (tool) => new Coal()
@@ -860,7 +907,7 @@ class CoalOre extends Block {
 class GoldOre extends Block {
     static NAME = "GoldOre";
     constructor(x, y, world) {
-        super(GoldOre.NAME, x, y, "atlas", textureAtlasMap.goldOre, Item.TYPE_PICKAXE, world, {
+        super(GoldOre.NAME, x, y, texturepack, textureAtlasMap.goldOre, Item.TYPE_PICKAXE, world, {
             resistance: 475,
             minTool: Item.CAN_BREAK_DIAMONDS
         });
@@ -870,7 +917,7 @@ class GoldOre extends Block {
 class RedstoneOre extends Block {
     static NAME = "RedstoneOre";
     constructor(x, y, world) {
-        super(RedstoneOre.NAME, x, y, "atlas", textureAtlasMap.redstoneOre, Item.TYPE_PICKAXE, world, {
+        super(RedstoneOre.NAME, x, y, texturepack, textureAtlasMap.redstoneOre, Item.TYPE_PICKAXE, world, {
             resistance: 475,
             minTool: Item.CAN_BREAK_DIAMONDS
         });
@@ -879,7 +926,7 @@ class RedstoneOre extends Block {
 
 class SmaragdOre extends Block {
     constructor(x, y, world) {
-        super("SmaragdOre", x, y, "atlas", textureAtlasMap.smaragdOre, Item.TYPE_PICKAXE, world, {
+        super("SmaragdOre", x, y, texturepack, textureAtlasMap.smaragdOre, Item.TYPE_PICKAXE, world, {
             resistance: 475,
             minTool: Item.CAN_BREAK_DIAMONDS
         });
@@ -889,7 +936,7 @@ class SmaragdOre extends Block {
 class DiamondOre extends Block {
     static NAME = "DiamondOre";
     constructor(x, y, world) {
-        super(DiamondOre.NAME, x, y, "atlas", textureAtlasMap.diamondOre, Item.TYPE_PICKAXE, world, {
+        super(DiamondOre.NAME, x, y, texturepack, textureAtlasMap.diamondOre, Item.TYPE_PICKAXE, world, {
             resistance: 525,
             minTool: Item.CAN_BREAK_DIAMONDS
         });
@@ -899,7 +946,7 @@ class DiamondOre extends Block {
 class Obsidian extends Block {
     static NAME = "Obsidian";
     constructor(x, y, world) {
-        super(Obsidian.NAME, x, y, "atlas", textureAtlasMap.obsidian, Item.TYPE_PICKAXE, world, {
+        super(Obsidian.NAME, x, y, texturepack, textureAtlasMap.obsidian, Item.TYPE_PICKAXE, world, {
             resistance: 1300,
             minTool: Item.CAN_BREAK_OBSIDIAN
         });
@@ -908,7 +955,7 @@ class Obsidian extends Block {
 
 class CoalBlock extends Block {
     constructor(x, y, world) {
-        super("CoalBlock", x, y, "atlas", textureAtlasMap.coalBLock, Item.TYPE_PICKAXE, world, {
+        super("CoalBlock", x, y, texturepack, textureAtlasMap.coalBLock, Item.TYPE_PICKAXE, world, {
             resistance: 400,
         });
     }
@@ -916,7 +963,7 @@ class CoalBlock extends Block {
 
 class IronBlock extends Block {
     constructor(x, y, world) {
-        super("IronBlock", x, y, "atlas", textureAtlasMap.ironBlock, Item.TYPE_PICKAXE, world, {
+        super("IronBlock", x, y, texturepack, textureAtlasMap.ironBlock, Item.TYPE_PICKAXE, world, {
             resistance: 400,
         });
     }
@@ -924,7 +971,7 @@ class IronBlock extends Block {
 
 class DiamondBlock extends Block {
     constructor(x, y, world) {
-        super("DiamondBlock", x, y, "atlas", textureAtlasMap.diamondBlock, Item.TYPE_PICKAXE, world, {
+        super("DiamondBlock", x, y, texturepack, textureAtlasMap.diamondBlock, Item.TYPE_PICKAXE, world, {
             resistance: 400,
         });
     }
@@ -932,7 +979,7 @@ class DiamondBlock extends Block {
 
 class SmaragdBlock extends Block {
     constructor(x, y, world) {
-        super("SmaragdBlock", x, y, "atlas", textureAtlasMap.smaragdBlock, Item.TYPE_PICKAXE, world, {
+        super("SmaragdBlock", x, y, texturepack, textureAtlasMap.smaragdBlock, Item.TYPE_PICKAXE, world, {
             resistance: 400,
         });
     }
@@ -943,16 +990,16 @@ class SmaragdBlock extends Block {
  */
 class OakLog extends Block {
     constructor(x, y, world) {
-        super("OakLog", x, y, "atlas", textureAtlasMap.oaklog, Item.TYPE_AXE, world, {
+        super("OakLog", x, y, texturepack, textureAtlasMap.oaklog, Item.TYPE_AXE, world, {
             resistance: 100,
             solid: false
         });
     }
 }
 
-class PakPlank extends Block {
+class OakPlank extends Block {
     constructor(x, y, world) {
-        super("PakPlank", x, y, "atlas", textureAtlasMap.oakPlank, Item.TYPE_AXE, world, {
+        super("OakPlank", x, y, texturepack, textureAtlasMap.oakPlank, Item.TYPE_AXE, world, {
             resistance: 100,
             solid: false
         });
@@ -961,7 +1008,7 @@ class PakPlank extends Block {
 
 class DarkoakLog extends Block {
     constructor(x, y, world) {
-        super("OakLog", x, y, "atlas", textureAtlasMap.darkOakLog, Item.TYPE_AXE, world, {
+        super("OakLog", x, y, texturepack, textureAtlasMap.darkOakLog, Item.TYPE_AXE, world, {
             resistance: 100,
             solid: false
         });
@@ -970,7 +1017,7 @@ class DarkoakLog extends Block {
 
 class DarkoakPlank extends Block {
     constructor(x, y, world) {
-        super("DarkOakPlank", x, y, "atlas", textureAtlasMap.darkOakPlank, Item.TYPE_AXE, world, {
+        super("DarkOakPlank", x, y, texturepack, textureAtlasMap.darkOakPlank, Item.TYPE_AXE, world, {
             resistance: 100,
             layer: 1
         });
@@ -979,7 +1026,7 @@ class DarkoakPlank extends Block {
 
 class Leaf extends Block {
     constructor(x, y, world) {
-        super("Leaf", x, y, "atlas", textureAtlasMap.leaf, Item.TYPE_AXE, world, {
+        super("Leaf", x, y, texturepack, textureAtlasMap.leaf, Item.TYPE_AXE, world, {
             resistance: 50,
         });
     }
@@ -990,7 +1037,7 @@ class Leaf extends Block {
  */
 class FlowerPink extends Block {
     constructor(x, y, world) {
-        super("FlowerPink", x, y, "atlas", textureAtlasMap.flowerPink, Item.TYPE_NONE, world, {
+        super("FlowerPink", x, y, texturepack, textureAtlasMap.flowerPink, Item.TYPE_NONE, world, {
             resistance: 1,
             solid: false,
         });
@@ -999,7 +1046,7 @@ class FlowerPink extends Block {
 
 class FlowerRed extends Block {
     constructor(x, y, world) {
-        super("FlowerRed", x, y, "atlas", textureAtlasMap.flowerRed, Item.TYPE_NONE, world, {
+        super("FlowerRed", x, y, texturepack, textureAtlasMap.flowerRed, Item.TYPE_NONE, world, {
             resistance: 1,
             solid: false,
         });
@@ -1011,15 +1058,31 @@ class FlowerRed extends Block {
  */
 class CraftingTable extends Block {
     constructor(x, y, world) {
-        super("CraftingTable", x, y, "atlas", textureAtlasMap.craftingtTable, Item.TYPE_AXE, world, {
+        super("CraftingTable", x, y, texturepack, textureAtlasMap.craftingtTable, Item.TYPE_AXE, world, {
             resistance: 100,
+            onrightclick: (player) => {
+                player.inventory.openCraftingtable();
+            }
         });
+    }
+}
+
+class Furnance extends Block {
+    constructor(x, y, world) {
+        super("CraftingTable", x, y, texturepack, textureAtlasMap.furnanceOff, Item.TYPE_AXE, world, {
+            resistance: 100
+        });
+        this.inventory = new FurnanceInventory(this);
+        
+        this.onrightclick = (player) => {
+            player.inventory.open(this.inventory);
+        }
     }
 }
 
 class EnchantingTable extends Block {
     constructor(x, y, world) {
-        super("EnchantingTable", x, y, "atlas", textureAtlasMap.enchantingtTable, Item.TYPE_PICKAXE, world, {
+        super("EnchantingTable", x, y, texturepack, textureAtlasMap.enchantingtTable, Item.TYPE_PICKAXE, world, {
             resistance: 500,
         });
     }
@@ -1030,37 +1093,37 @@ class EnchantingTable extends Block {
  */
 class Iron extends Item {
     constructor(){
-        super("Iron", "atlas", textureAtlasMap.iron, Item.TYPE_NONE, {});
+        super("Iron", texturepack, textureAtlasMap.iron, Item.TYPE_NONE, {});
     }
 }
 
 class Coal extends Item {
     constructor(){
-        super("Coal", "atlas", textureAtlasMap.coal, Item.TYPE_NONE, {});
+        super("Coal", texturepack, textureAtlasMap.coal, Item.TYPE_NONE, {});
     }
 }
 
 class Charcoal extends Item {
     constructor(){
-        super("Charcoal", "atlas", textureAtlasMap.charCoal, Item.TYPE_NONE, {});
+        super("Charcoal", texturepack, textureAtlasMap.charCoal, Item.TYPE_NONE, {});
     }
 }
 
 class Smaragd extends Item {
     constructor(){
-        super("Smaragd", "atlas", textureAtlasMap.smaragd, Item.TYPE_NONE, {});
+        super("Smaragd", texturepack, textureAtlasMap.smaragd, Item.TYPE_NONE, {});
     }
 }
 
 class Gold extends Item {
     constructor(){
-        super("Gold", "atlas", textureAtlasMap.gold, Item.TYPE_NONE, {});
+        super("Gold", texturepack, textureAtlasMap.gold, Item.TYPE_NONE, {});
     }
 }
 
 class Diamond extends Item {
     constructor(){
-        super("Diamond", "atlas", textureAtlasMap.diamond, Item.TYPE_NONE, {});
+        super("Diamond", texturepack, textureAtlasMap.diamond, Item.TYPE_NONE, {});
     }
 }
 
@@ -1069,6 +1132,6 @@ class Diamond extends Item {
  */
  class Stick extends Item {
     constructor(){
-        super("Stick", "atlas", textureAtlasMap.stick, Item.TYPE_NONE, {});
+        super("Stick", texturepack, textureAtlasMap.stick, Item.TYPE_NONE, {});
     }
 }

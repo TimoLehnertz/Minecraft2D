@@ -51,6 +51,7 @@ $(function() {
 class Noise {
 
     static seed = Math.random();
+    // static seed = Math.random();
 
     constructor(seed){
         this.seed = seed
@@ -91,6 +92,11 @@ class ItemFrame extends Panel {
         if(Math.random() < 0.1){
             this.holdItem(new Cobblestone());
             this.item.stack = 64;
+        }
+        if(Math.random() < 0.1){
+            const item = new OakLog();
+            item.stack = 20;
+            this.holdItem(item);
         }
     }
 
@@ -311,14 +317,67 @@ class CraftingFrame extends Panel {
             // console.log("update")
             const craftingResult = Item.craft(this.getIngredients());
             if(craftingResult){
-                const amount = Math.min(craftingResult.maxStack, this.getMinAmount());
-                craftingResult.stack = amount;
+                const multiply = craftingResult.stack;
+                craftingResult.stack = Math.min(multiply * this.getMinAmount(), craftingResult.maxStack);
                 this.resultFrame.holdItem(craftingResult);
-                this.crafted = amount;
+                this.crafted = craftingResult.stack / multiply;
             } else{
                 this.resultFrame.holdItem(null);
             }
         }, 0);
+    }
+
+    hideAllFrames(){
+        for (const row of this.craftingFrames) {
+            for (const frame of row) {
+                frame.visible = false;
+            }
+        }
+    }
+
+    dropItems(){
+        for (const row of this.craftingFrames) {
+            for (const frame of row) {
+                this.inventory.dropItem(frame.item, 10000);
+                frame.holdItem(null);
+                // frame.visible = false;
+            }
+        }
+    }
+
+    set size(size){
+        this.hideAllFrames();
+        for (let x = 0; x < size; x++) {
+            for (let y = 0; y < size; y++) {
+                this.craftingFrames[y][x].visible = true;
+            }
+        }
+    }
+}
+
+class InventoryAddon extends Panel{
+
+    constructor(){
+
+    }
+
+    init() {
+        console.log("implement me");
+    }
+}
+
+class FurnanceInventory extends InventoryAddon {
+
+    constructor(furnance){
+        super();
+    }
+
+    init(frameSize){
+        this.framesize = frameSize;
+        for (const frames of this.frames) {
+            frame.width = frameSize;
+            frame.height = frameSize;
+        }
     }
 }
 
@@ -387,7 +446,8 @@ class Inventory extends Panel {
         /**
          * crafting frame
          */
-        this.add(new CraftingFrame(3, itemWidth, this.itemMargin, this));
+        this.craftingFrame = new CraftingFrame(3, itemWidth, this.itemMargin, this);
+        this.add(this.craftingFrame);
 
         this.hotbar.children[0].active = true;
         this.entity.holdItem(this.hotbar.children[0].item);
@@ -420,9 +480,24 @@ class Inventory extends Panel {
         }
     }
 
-   open(){
+    openCraftingTable(){
         Inventory.closeAll();
+        this.craftingFrame.visible = true;
+        this.craftingFrame.size = 3;
         this.opened = true;
+
+    }
+
+    open(addon){
+        if(addon){
+            this.craftingFrame.visible = false;
+            this.addon = addon;
+            this.add(addon);
+        } else{
+            this.craftingFrame.visible = true;
+        }
+        this.opened = true;
+        
    }
 
    close(){
@@ -430,6 +505,7 @@ class Inventory extends Panel {
         this.dropItem(this.grabbedItem, 100000);
         this.remove(this.grabbedaItem);
         this.grabbedItem = null;
+        this.craftingFrame.dropItems();
    }
 
    toggle(){
@@ -491,6 +567,7 @@ class Inventory extends Panel {
             }
             this.add(this.grabbedItem);
         }
+        this.setActiveHotbar(this.activeIndex);
     }
 
     dropItem(item, amount = 1){
@@ -516,7 +593,6 @@ class Inventory extends Panel {
         for (const itemFrame of this.hotbar.children) {
             if(itemFrame.canTakeItemPartly(item)){
                 item = itemFrame.takeItemKeepOwn(item);
-                // console.log("t");
             }
         }
         if(!item) return;
@@ -980,10 +1056,10 @@ class Player extends Entity {
     }
 
     playerControlls(elapsed, time, keys){
-        if(this.leftMouseDown && this.game.hoverBlocks){
+        if(this.leftMouseDown && this.game.hoverBlocks && !this.inventory.opened){
             this.game.hoverBlocks?.[0]?.hit(elapsed, this.handItem);
         }
-        if(this.rightMouseDown){
+        if(this.rightMouseDown && !this.inventory.opened){
             this.buildBlock();
         }
         
@@ -1032,6 +1108,7 @@ class Game {
         this.camera.target = this.activePlayer;
         this.inputEventListener.push(this.activePlayer);
         this.inputEventListener.push(this.activePlayer.inventory);
+        this.inputEventListener.push(this.world);
     }
 
     init(){
@@ -1502,11 +1579,14 @@ class World{
 
         const prevBlocks = this.getBlock(x, y);
 
-        for (const entity of this.entities) {
-            if(entity.hitbox.intersects(prevBlocks?.[0]?.hitbox)){
-                return false;
+        if(block.solid){
+            for (const entity of this.entities) {
+                if(entity.hitbox.intersects(new Hitbox(x, y, 1, 1))){
+                    return false;
+                }
             }
         }
+       
 
         if(prevBlocks?.[layer]){
             return false;
@@ -1551,6 +1631,11 @@ class World{
                 return this.changedBlocks[World.xToIndex(x)][y];
             }
         }
+        if(x === 1 && y === 52){
+            const block = new CraftingTable(x, y, this);
+            block.placed = true;
+            return [block];
+        }
         const noise = Noise.noise(x / 6, y / 6) / 2 + 0.5;
         const xNoise = Noise.noise(x * 0.03, 0);
 
@@ -1588,7 +1673,7 @@ class World{
             }
         }
 
-        const tree = [
+        const trees = [[
             [null, "Leaf", "Leaf", null, null],
             [null, "Leaf", "Leaf", "Leaf", null],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
@@ -1599,17 +1684,28 @@ class World{
             [null,    "Leaf", "Oaklog", "Leaf", null],
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
-        ]
+        ],[
+            [null, null, "Leaf", null, null],
+            [null, "Leaf", "Leaf", "Leaf", null],
+            ["Leaf", "Leaf", "Leaf", "Leaf", null],
+            ["Leaf", "Leaf", "Oaklog", "Leaf", "Leaf"],
+            [null,   "Leaf", "Oaklog", "Leaf", null],
+            [null,    "Leaf", "Oaklog", "Leaf", null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+        ]];
         /**
          * trees
          */
         
         let treeX = x % 13;
-
+        
         if(x < 0){
             treeX += 5;
         }
         const treeXOrigin = x - treeX;
+        let treeIndex = Noise.noise(treeXOrigin, 0) > 0 ? 0 : 1;
+        const tree = trees[treeIndex];
 
         const xTreeNoise = Noise.noise((treeXOrigin + 2) * 0.03, 0);
         const treeYOrigin = Math.round(50 + xTreeNoise * 10);
@@ -1800,6 +1896,20 @@ class World{
             this.changedBlocks[World.xToIndex(x)] = [];
         }
         this.changedBlocks[World.xToIndex(x)][y] = this.getBlock(x, y);
+    }
+
+    mousedown(e){
+        if(e.button === Panel.RIGHT_CLICK){
+            const cursor = this.game.cursor;
+            if(cursor){
+                const blocks = this.getBlock(cursor.x, cursor.y);
+                if(blocks){
+                    for (const block of blocks) {
+                        block.onrightclick(this.game.activePlayer);
+                    }
+                }
+            }
+        }
     }
 }
 
