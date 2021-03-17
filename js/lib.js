@@ -297,7 +297,7 @@ class Drawer{
         this.ctx.fillText(text, x, y)
     }
 
-    draw(texture, x, y, width, height, tx = 0, ty = 0, twidth = 16, theight = 16, rotation = 0){
+    draw(texture, x, y, width, height, tx = 0, ty = 0, twidth = 16, theight = 16, filter = ""){
         const screen = this.screen;
         if(x > screen.width || x + width < 0 || y > screen.height || y + height < 0){
             return;
@@ -308,6 +308,9 @@ class Drawer{
             y = Math.round(y);
             width = Math.round(width);
             height = Math.round(height);
+        }
+        if(filter) {
+            this.ctx.filter = filter;
         }
         // if(rotation !== 0){
         //     this.ctx.translate(x + width / 2, y + height / 2);
@@ -325,6 +328,7 @@ class Drawer{
                 // console.log(error);
 
             }
+            this.ctx.filter = "none";
         // }
     }
 }

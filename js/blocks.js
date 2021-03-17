@@ -23,6 +23,12 @@ const textureAtlasMap = {
         width: 200 / tileWidth,
         height: 400 / tileWidth
     },
+    zombie: {
+        x: 0,
+        y: 0,
+        width: 194 / tileWidth,
+        height: 400 / tileWidth
+    },
     /**
      * tools
      */
@@ -53,30 +59,10 @@ const textureAtlasMap = {
      * stone
      */
     stoneAxe: { x: 48, y: 26, width: 1, height: 1},
-    stoneHoe: {
-        x: 49,
-        y: 27,
-        width: 1,
-        height: 1
-    },
-    stonePickaxe: {
-        x: 49,
-        y: 28,
-        width: 1,
-        height: 1
-    },
-    stoneShovel: {
-        x: 49,
-        y: 29,
-        width: 1,
-        height: 1
-    },
-    stoneSword: {
-        x: 49,
-        y: 30,
-        width: 1,
-        height: 1
-    },
+    stoneHoe: { x: 48, y: 27, width: 1, height: 1},
+    stonePickaxe: { x: 48, y: 28, width: 1, height: 1},
+    stoneShovel: { x: 48, y: 29, width: 1, height: 1},
+    stoneSword: { x: 48, y: 30, width: 1, height: 1},
     /**
      * iron
      */
@@ -246,6 +232,7 @@ const textureAtlasMap = {
     glowstone: { x: 23, y: 31, width: 1, height: 1},
     bedrock: { x: 11, y: 26, width: 1, height: 1},
     stick: { x: 1, y: 25, width: 1, height: 1},
+    heart: { x: 12, y: 23, width: 1, height: 1},
 
     /**
      * food
@@ -258,86 +245,6 @@ const textureAtlasMap = {
 };
 
 class Item extends Panel {
-
-    static CRAFTING_RECIPES = [
-        {
-            getResult: () => new IronBlock(),
-            amount: 1,//optional default 1
-            recipe: [
-                ["iron", "iron", "iron"],
-                ["iron", "iron", "iron"],
-                ["iron", "iron", "iron"],
-            ]
-        }, {
-            getResult: () => new CraftingTable(),
-            amount: 1,//optional default 1
-            recipe: [
-                [null, null, null],
-                [null, "oakPlank", "oakPlank"],
-                [null, "oakPlank", "oakPlank"],
-            ]
-        },{
-            getResult: () => new Furnance(),
-            recipe: [
-                ["Cobblestone", "Cobblestone", "Cobblestone"],
-                ["Cobblestone", null, "Cobblestone"],
-                ["Cobblestone", "Cobblestone", "Cobblestone"]
-            ],
-        }, {
-            getResult: () => new OakPlank(),
-            recipe: [
-                [null, null, null],
-                [null, "OakLog", null],
-                [null, null, null]
-            ],
-            amount: 4
-        }, {
-            getResult: () => new Stick(),
-            recipe: [
-                [null, null, null],
-                [null, "OakPlank", null],
-                [null, "OakPlank", null]
-            ],
-            amount: 4
-        }, {
-            getResult: () => new WoodenAxe(),
-            recipe: [
-                [null, "OakPlank", "OakPlank"],
-                [null, "stick", "OakPlank"],
-                [null, "stick", null]
-            ],
-        },{
-            getResult: () => new WoodenPickaxe(),
-            recipe: [
-                ["OakPlank", "OakPlank", "OakPlank"],
-                [null, "stick", null],
-                [null, "stick", null]
-            ],
-        },{
-            getResult: () => new WoodenSword(),
-            recipe: [
-                [null, "OakPlank", null],
-                [null, "OakPlank", null],
-                [null, "stick", null]
-            ],
-        },{
-            getResult: () => new WoodenHoe(),
-            recipe: [
-                [null, "OakPlank", "OakPlank"],
-                [null, "stick", null],
-                [null, "stick", null]
-            ],
-        },{
-            getResult: () => new WoodenShovel(),
-            recipe: [
-                [null, "OakPlank", null],
-                [null, "stick", null],
-                [null, "stick", null]
-            ],
-        },
-    ]
-
-    
 
     static TYPE_NONE  = -1;
     static TYPE_SHOVEL  = 0;
@@ -369,7 +276,8 @@ class Item extends Panel {
      
         this.efficiency = setup.efficiency ?? 1;
         this.maxStack = setup.maxStack ?? 64;
-        this.attackDmg = setup.attackDmg ?? 1;
+        this.attackDmg = setup.attackDmg ?? 0;
+        this.attackRadius = setup.attackRadius ?? 3;
         this.stack = setup.stack ?? 1;
         this.breakLevel = setup.breakLevel ?? 0;
         this.fuel = setup.fuel ?? 0;//for furnance
@@ -427,7 +335,7 @@ class Item extends Panel {
 
     static craft(ingredients){
         let countA = Item.countIngredients(ingredients);
-        for (const recipe of Item.CRAFTING_RECIPES) {
+        for (const recipe of CRAFTING_RECIPES) {
             const countB = Item.countIngredients(recipe.recipe);
             if(countB !== countA){
                 continue;
@@ -822,12 +730,13 @@ class DiamondAxe extends Item {
     constructor(){
         super("Diamond_axe", texturepack, textureAtlasMap.diamondAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_DIAMOND,
+            // attackDmg: 0.5
         });
     }
 }
 
 class DiamondShovel extends Item {
-    constructor(){
+    constructor() {
         super("Diamond_shovel", texturepack, textureAtlasMap.diamondShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_DIAMOND,
         });
@@ -1241,7 +1150,8 @@ class Diamond extends Item {
  class Stick extends Item {
     constructor(){
         super("Stick", texturepack, textureAtlasMap.stick, Item.TYPE_NONE, {
-            fuel: 0.5
+            fuel: 0.5,
+            attackDmg: 0.5
         });
     }
 }
