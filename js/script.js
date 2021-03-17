@@ -67,10 +67,11 @@ class Noise {
 
 class ItemFrame extends Panel {
 
-    constructor(x = 0, y = 0, width = 100, height = 100, inventory, color = "#777",){
+    constructor(x = 0, y = 0, width = 100, height = 100, inventory, isAddon = false, color = "#777"){
         // console.log(inventory)
         // if(inventory === un)
         super(x, y, width, height, color);
+        this.isAddon = isAddon;
         this.inventory = inventory;
         this.standartColor = color;
         this.border = true;
@@ -127,7 +128,7 @@ class ItemFrame extends Panel {
     }
 
     mousedown(e){
-        this.inventory.itemFrameClicked(this, e.button);
+        this.inventory.itemFrameClicked(this, e.button, e.shiftKey);
         this.onchange();
     }
 
@@ -232,8 +233,9 @@ class ItemFrame extends Panel {
             } else {
                 return item;
             }
+        } else{
+            this.holdItem(item);
         }
-        return item;
     }
 
     getItem(){
@@ -344,7 +346,6 @@ class CraftingFrame extends Panel {
     }
 
     update() {
-        console.log("updating");
         // window.setTimeout(() => {
             // console.log("update")
             const craftingResult = Item.craft(this.getIngredients());
@@ -418,6 +419,10 @@ class InventoryAddon extends Panel{
             }
         }
     }
+
+    takeItem(item){
+        return item;
+    }
 }
 
 class FurnanceInventory extends InventoryAddon {
@@ -426,15 +431,15 @@ class FurnanceInventory extends InventoryAddon {
         super();
         this.furnance = furnance;
 
-        this.fireFrame = new ItemFrame(200, 140, 100, 100,  null);
+        this.fireFrame = new ItemFrame(200, 140, 100, 100,  null, true);
         this.fireFrame.filterItems = (item) => !item || item?.fuel > 0
         this.fireFrame.holdItem(null);
 
-        this.oreFrame = new ItemFrame(200, 40, 100, 100, null);
+        this.oreFrame = new ItemFrame(200, 40, 100, 100, null, true);
         this.oreFrame.filterItems = (item) => !item || item?.getFurnanceResult()
         this.oreFrame.holdItem(null);
 
-        this.resultFrame = new ItemFrame(350, 90, 100, 100, null);
+        this.resultFrame = new ItemFrame(350, 90, 100, 100, null, true);
         this.resultFrame.canItemBePlacedHere = false;
         this.resultFrame.holdItem(null);
 
@@ -444,6 +449,7 @@ class FurnanceInventory extends InventoryAddon {
 
         this.fireFrame.onchange = () => {this.update()};
         this.oreFrame.onchange = () => {this.update()};
+        this.resultFrame.ontake = () => {this.update()};
 
         /**
          * progressbars
@@ -506,6 +512,19 @@ class FurnanceInventory extends InventoryAddon {
      */
     close(){
         // do nothing
+    }
+
+    takeItem(item){
+        if(!item){
+            return item;
+        }
+        if(item.fuel > 0){
+            item = this.fireFrame.takeItemKeepOwn(item);
+        }
+        if(item && item.getFurnanceResult()){
+            item = this.oreFrame.takeItemKeepOwn(item);
+        }
+        return item;
     }
 }
 
@@ -642,8 +661,8 @@ class Inventory extends Panel {
 
    close(){
         this.opened = false;
+        this.remove(this.grabbedItem);
         this.dropItem(this.grabbedItem, 100000);
-        this.remove(this.grabbedaItem);
         this.grabbedItem = null;
         this.craftingFrame.dropItems();
         this.detatchAddon();
@@ -676,8 +695,18 @@ class Inventory extends Panel {
         this.mouse = parsedMouse;
     }
 
-    itemFrameClicked(frame, button){
+    itemFrameClicked(frame, button, shiftPressed){
         if(!this.opened){
+            return;
+        }
+        if(shiftPressed && this.addon && !frame.isAddon) {
+            let item = frame.item;
+            item = this.addon.takeItem(item);
+            if(!item || item.stack === 0){
+                frame.holdItem(null);
+            } else {
+                frame.item.stack = item.stack;
+            }
             return;
         }
         if(button === Panel.LEFT_CLICK){
@@ -789,15 +818,43 @@ class Inventory extends Panel {
         this.hotbar.children[index].active = true;
         this.entity.holdItem(this.hotbar.children[index].item);
     }
+
+    getAllItems(){
+        const out = [];
+        for (const child of this.children) {
+            if(child instanceof Panel){
+                for (const frame of child.children) {
+                    if(frame instanceof ItemFrame){
+                        if(frame.item){
+                            out.push(frame.item);
+                        }
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    clear(parent = this) {
+        for (const child of parent.children) {
+            if(child instanceof ItemFrame){
+                child.holdItem(null);
+            } else{
+                this.clear(child);
+            }
+        }
+    }
 }
 
 class Entity extends Point {
 
-    constructor(x, y, width, height, texture, textureMeta, hitbox, game, visible = true, hasInventory = false){
+    constructor(x, y, width, height, texture, textureMeta, hitbox, game, life = 0, visible = true, hasInventory = false){
         super(x, y);
         this.vel = new Point(0, 0);
+        this.life = life;
+        this.maxLife = life;
         this.width = width;//blocks
-        this.height = height;//blocks 
+        this.height = height;//blocks
         this.texture = texture;
         this.gravity = 15;
         this.hitbox = hitbox;
@@ -808,9 +865,18 @@ class Entity extends Point {
         this.showHitbox = false;
         this.game = game;
         this.hasInventory = hasInventory;
+        this.regenRate = 0.01;
+        this.lastHit = 0;
+        this.lastDealedHit = 0;
+        this.attackCooldown = 450;
+
         if(hasInventory){
             this.inventory = new Inventory(this);
         }
+    }
+
+    getDrops() {
+        // return new FlowerPink();
     }
 
     jumb(){
@@ -820,10 +886,48 @@ class Entity extends Point {
         }
     }
 
+    walkRight(autojumb = false) {
+        this.vel.add(new Point(12 * ((1000 / 60) / 1000)));
+        if(autojumb) {
+            this.autojumb();
+        }
+    }
+
+    walkLeft(autojumb = false) {
+        this.vel.add(new Point(-12 * ((1000 / 60) / 1000)));
+        if(autojumb) {
+            this.autojumb();
+        }
+    }
+
+    autojumb (){
+        if(!this.isGrounded){
+            return;
+        }
+        const right = this.vel.x > 0;
+        const x = this.hitbox.center.x + (right ? 1 : -1);
+        const y = this.pos.y - this.height + 0.5;
+        const block1 = this.game.world.getBlock(x, y);
+        const block2 = this.game.world.getBlock(x, y + 1);
+        const block3 = this.game.world.getBlock(x, y + 2);
+        if(block1 && block1?.[0]?.solid){
+            if(!(block2 && block2?.[0]?.solid) && !(block3 && block3?.[0]?.solid)){
+                this.jumb();
+            }
+        }
+    }
+
+    canGetHit(){
+        return this.life > 0;
+    }
+
     tick(elapsed, world, keys){
         /**
          * gravity
          */
+
+        this.life = Math.min(this.life + this.regenRate, this.maxLife);
+
         if(this.controller){
             this.controller.tick(elapsed, keys, world.game);
         }
@@ -851,7 +955,6 @@ class Entity extends Point {
     move(world, elapsed){
         
         this.isGrounded = false;
-
         elapsed = 11;
         const vel = this.vel.clone().multiply(new Point(elapsed / 1000, elapsed / 1000));
         
@@ -920,14 +1023,22 @@ class Entity extends Point {
         this.vel.multiply(new Point(1 / fallof, 1 / fallof));//half every 100ms
     }
 
+    getEntitiesInRadius(radius){
+        return this.game.world.getEntitiesInRadius(this.pos.x, this.pos.y, radius, [this]);
+    }
+
     draw(drawer, camera){
         if(!this.visible){
             return;
         }
         // console.log();
         const screen = camera.worldToScreen(this.pos, drawer.screen);
+        let filter = "";
+        if(this.game.time - this.lastHit < 300){
+            filter = "brightness(130%) hue-rotate(80deg)";
+        }
         drawer.draw(this.texture, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
-            this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth);
+            this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, filter);
 
         if(this.showHitbox){
             const start = camera.worldToScreen(this.hitbox.topLeft, drawer.screen);
@@ -954,9 +1065,56 @@ class Entity extends Point {
         item.y = 0;
     }
 
+    dealHit(dmg, radius){
+        if(this.game.time - this.lastDealedHit > this.attackCooldown){
+            this.lastDealedHit = this.game.time;
+            this.game.world.damageEntities(dmg, this.pos.x, this.pos.y, radius, [this]);
+        }
+    }
+
+    getHit(dmg, fromX, fromY) {
+        this.lastHit = this.game.time;
+        const knockback = 10;
+        // console.log("got hit")
+        if(!this.canGetHit()){
+            return;
+        }
+        const left = fromX < this.pos.x ? 1 : -1;
+        const bottom = fromY < this.pos.y ? 1 : -1;
+        this.life -= dmg;
+        this.vel.x += knockback * left;
+        this.vel.y += knockback * bottom;
+        if(this.life < 0){
+            this.die()
+        }
+    }
+
     die() {
         console.log("I died :/");
         this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
+        const drops = this.getDrops();
+        console.log(drops);
+        if(drops) {
+            console.log(drops)
+            for (const drop of drops) {
+                const droppedItem = new DroppedItem(drop, this.hitbox.center.x, this.hitbox.center.y, this.game, 1300);
+                droppedItem.vel.x = Math.random() * 15 - 5;
+                droppedItem.vel.y = Math.random() * 10 + 10;
+                this.game.spawnEntity(droppedItem);
+            }
+        }
+    }
+}
+
+class Zombie extends Entity {
+    
+    constructor(game, x = 0, y = 53){
+        super(x, y, 0.9, 1.8, "zombie", textureAtlasMap.zombie, new Hitbox(0.1, 0, 0.8, 1.8), game, 20, true, false);
+        this.controller = new ZombieController(this);
+    }
+
+    getDrops() {
+        return [new Iron()];
     }
 }
 
@@ -1085,6 +1243,10 @@ class Hitbox {
         }
     }
 
+    inRange(x, y, range){
+        return this.center.distanceFrom(new Point(x, y)) < range;
+    }
+
     intersectsAfter(hitbox2, vel, time){
         if(!hitbox2){
             return false;
@@ -1127,11 +1289,17 @@ class Hitbox {
 class Player extends Entity {
 
     constructor(game, x = 0, y = 53, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
-        super(x, y, 0.9, 1.8, texture, textureAtlasMap.steve, hitbox, game, true, true);
+        super(x, y, 0.9, 1.8, texture, textureAtlasMap.steve, hitbox, game, 20, true, true);
         this.controller = new KeyboardController(this);
         this.leftMouseDown = false;
         this.rightMouseDown = false;
         this.isPlayer = true;
+    }
+
+    getDrops() {
+        const drops = this.inventory.getAllItems();
+        this.inventory.clear();
+        return drops;
     }
 
     keydown(e, keyStatus) {
@@ -1145,7 +1313,7 @@ class Player extends Entity {
             this.inventory.close();
             this.controller.active = true;
         }
-        if(keyPressed("dropItem", keyStatus)) {
+        if(keyPressed("dropItem", keyStatus) && !this.inventory.opened) {
             const amount = e.originalEvent.ctrlKey ? 100000 : 1;
             if(!this.inventory.dropItem(this.handItem, amount)){
                 this.handItem = null;
@@ -1187,6 +1355,9 @@ class Player extends Entity {
         if(e.originalEvent.button === Panel.RIGHT_CLICK){
             this.rightMouseDown = true;
         }
+        if(this.handItem?.attackDmg > 0){
+            this.dealHit(this.handItem.attackDmg, this.handItem.attackRadius);
+        }
     }
 
     mouseup(e) {
@@ -1203,11 +1374,18 @@ class Player extends Entity {
         super.tick(elapsed, world, keys);//should be last as it checks collisions and controller can move unchecked
     }
 
-    playerControlls(elapsed, time, keys){
-        if(this.leftMouseDown && this.game.hoverBlocks && !this.inventory.opened){
+    playerControlls(elapsed){
+        if(this.inventory.opened) {
+            return;
+        }
+        let canBreakBlock = true;
+        if(this.handItem){
+            canBreakBlock = this.handItem.attackDmg === 0;
+        }
+        if(this.leftMouseDown && this.game.hoverBlocks && canBreakBlock){
             this.game.hoverBlocks?.[0]?.hit(elapsed, this.handItem);
         }
-        if(this.rightMouseDown && !this.inventory.opened){
+        if(this.rightMouseDown){
             this.buildBlock();
         }
         
@@ -1228,6 +1406,13 @@ class Player extends Entity {
             this.inventory.takeItem(collider.item);
             collider.die();
         }
+    }
+}
+
+class PlayerInfo extends Panel {
+
+    constructor(player) {
+        super()
     }
 }
 
@@ -1364,6 +1549,15 @@ class Game {
          * overlays
          */
         this.drawOverlays();
+        const cursor = this.cursor;
+        if(cursor){
+            this.hoverBlocks = this.world.getBlock(cursor.x, cursor.y);
+            // if(hoverBlocks && hoverBlocks[0]){
+            //     this.hoverBlocks = hoverBlocks;
+            // }
+        } else{
+            this.hoverBlocks = null;
+        }
         Inventory.drawAll(this.drawer, elapsed);
 
         if(this.debug){
@@ -1387,6 +1581,10 @@ class Game {
                 this.drawer.rect(pos.pos.x, pos.pos.y, pos.size, pos.size);
             }
         }
+        /**
+         * lives
+         */
+
     }
 
     drawDebug(elapsed){
@@ -1431,9 +1629,13 @@ class Game {
         const center = this.activePlayer.hitbox.center;
         const mouse = this.camera.screenToWorld(new Point(this.mouseX, this.mouseY), this.drawer.screen);
         let distance = mouse.distanceFrom(center);
-        distance = Math.min(this.playerReach, distance);
-        const coords = center.add(new Point(distance, distance).multiply(mouse.subtract(center).uniform));
-        return coords;
+        // distance = Math.min(this.playerReach, distance);
+        if(distance > this.playerReach){
+            // console.log("max")
+            return null;
+        }
+        // const coords = center.add(new Point(distance, distance).multiply(mouse.subtract(center).uniform));
+        return mouse;
     }
 
     buildBlock(block){
@@ -1524,6 +1726,41 @@ class Controller {
     }
 }
 
+class ZombieController extends Controller {
+
+    constructor(entity){
+        super(entity);
+    }
+
+    tick(elapsed, keys, game) {
+        const enemies = this.entity.getEntitiesInRadius(16);
+        for (const enemy of enemies) {
+            if(this.aggressiveOn(enemy)){
+                if(enemy.distance123 < 4) {
+                    this.entity.dealHit(4, 2);
+                }
+                if(enemy.distance123 > 0.5){
+                    if(enemy.pos.x < this.entity.pos.x) {
+                        this.entity.walkLeft(true);
+                    } else {
+                        this.entity.walkRight(true);
+                    }
+                }
+                return;
+            }
+        }
+        /**
+         * random movement
+         */
+        
+    }
+
+    aggressiveOn(entity) {
+        if(!entity) return false;
+        return entity.isPlayer;
+    }
+}
+
 class KeyboardController extends Controller {
 
     constructor(entity){
@@ -1534,11 +1771,14 @@ class KeyboardController extends Controller {
         if(!this.active){
             return;
         }
+        if(this.entity.inventory.opened){
+            return;
+        }
         if(keyPressed("left", keys)){
-            this.entity.vel.add(new Point(-12 * (elapsed / 1000)));
+            this.entity.walkLeft();
         }
         if(keyPressed("right", keys)){
-            this.entity.vel.add(new Point(12 * (elapsed / 1000)));
+            this.entity.walkRight();
         }
         if(!keyPressed("right", keys) && this.entity.vel.x > 0 && this.entity.isGrounded){
             this.entity.vel.multiply(new Point(0.8, 1));
@@ -1608,6 +1848,12 @@ class World{
         this.maxLoadedColumns = 200; //older chunks will get deleted when this number gets exeeded
         this.lastLoadedChunk = undefined;
         this.idChunk = 0;
+
+        /**
+         * testing
+         */
+        const zombie = new Zombie(this.game, 0, 70);
+        this.entities.push(zombie);
     }
 
     loadChunks(fromX, toX){
@@ -1660,6 +1906,7 @@ class World{
     }
 
     blockLoaded(x){
+        x = Math.floor(x);
         return this.loadedChunks.includes(x);
     }
 
@@ -1958,6 +2205,22 @@ class World{
         return blocks;
     }
 
+    getEntitiesInRadius(x, y, radius, exclude){
+        const out= [];
+        for (const entity of this.entities) {
+            if(exclude.includes(entity)){
+                continue;
+            }
+            const distance = entity.hitbox.center.distanceFrom(new Point(x, y))
+            if(distance <= radius){
+                entity.distance123 = distance;
+                out.push(entity);
+            }
+        }
+        sortArray(out, "distance123");
+        return out;
+    }
+
     entityOnBlock(entity){
         if(entity.y % 1 === 0){
             return getBlock(entity.x, entity.y)
@@ -1969,6 +2232,9 @@ class World{
          * Entities
          */
         for (const entity of this.entities) {
+            if(!this.blockLoaded(entity.pos.x)){
+                continue;
+            }
             entity.tick(elapsed, this, keys, time);
             if("entityCollided" in entity){
                 for (const collider of this.entities) {
@@ -1992,6 +2258,17 @@ class World{
                 for (const block of blocks) {
                     block.tick(elapsed);
                 }
+            }
+        }
+    }
+
+    damageEntities(dmg, x, y, radius, excluding = []){
+        for (const entity of this.entities) {
+            if(excluding.includes(entity) || !entity.canGetHit()){
+                continue;
+            }
+            if(entity?.hitbox.inRange(x, y, radius)){
+                entity.getHit(dmg, x, y);
             }
         }
     }
@@ -2065,7 +2342,7 @@ class World{
 class DroppedItem extends Entity {
 
     constructor(item, x, y, game, timeout) {
-        super(x - 0.1, y, 0.5, 0.5, item.texture, item.textureMeta, new Hitbox(0,0,0.5, 0.7), game, true, false);
+        super(x - 0.1, y, 0.5, 0.5, item.texture, item.textureMeta, new Hitbox(0,0,0.5, 0.7), game, 0, true, false);
         const randomness = 0.5;
         this.vel.add(new Point(Math.random() * randomness - randomness / 2, Math.random() * randomness - randomness / 2))
         this.droppedTime = game.time;
