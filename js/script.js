@@ -1085,7 +1085,7 @@ class Entity extends Point {
         this.vel.x += knockback * left;
         this.vel.y += knockback * bottom;
         if(this.life < 0){
-            this.die();
+            this.die()
         }
     }
 
