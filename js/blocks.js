@@ -1155,7 +1155,7 @@ class Furnance extends Block {
                 this.progress = 0;
                 this.inventory.burn();
                 this.inventory.update();
-        // this.deactivate();
+                // this.deactivate();
             }
         }
         if(this.fuel <= 0){
