@@ -5,7 +5,8 @@ const keymap = {
     jumb: ["Space", "KeyW", "ArrowUp"],
     zoomOut: ["KeyZ", "NumpadSubtract"],
     zoomIn: ["KeyX", "NumpadAdd"],
-    inventory: ["KeyE"],
+    openInventory: ["KeyE"],
+    closeInventory: ["KeyE", "Escape"],
     dropItem: ["KeyQ"],
     fly: ["KeyF"],
     hotbar1: ["Digit1"],
@@ -66,17 +67,20 @@ class Noise {
 
 class ItemFrame extends Panel {
 
-    constructor(x = 0, y = 0, width = 100, height = 100, color = "white", inventory){
+    constructor(x = 0, y = 0, width = 100, height = 100, inventory, color = "#777",){
         // console.log(inventory)
         // if(inventory === un)
         super(x, y, width, height, color);
         this.inventory = inventory;
         this.standartColor = color;
+        this.border = true;
+        this.borderColor = "#6663";
         this.active = false;
         this.item = undefined;
         this.canItemBePlacedHere = true;
         this.onchange = () => false;
         this.ontake = () => false;
+        this.filterItems = (item) => true;
 
         if(Math.random() < 0.1){
             this.holdItem(new DiamondPickaxe());
@@ -117,8 +121,9 @@ class ItemFrame extends Panel {
         }
     }
 
-    mousemove(e) {
-        
+    isFull(){
+        if(!this.item) return false;
+        return this.item.stack >= this.item.maxStack;
     }
 
     mousedown(e){
@@ -134,6 +139,9 @@ class ItemFrame extends Panel {
     }
 
     canTakeItemPartly(item){
+        if(!this.filterItems(item)){
+            return false;
+        }
         if(!this.canItemBePlacedHere){
             return false;
         }
@@ -143,7 +151,14 @@ class ItemFrame extends Panel {
         return this.item.isStackableWith(item);
     }
 
-    decrease(amount){
+    canTakeItemIgnoreFilters(item){
+        // console.log(!this.item)
+        if(!this.item) return true;
+        if(!item) return false;
+        return this.item.isStackableWith(item) && item.stack + this.item.stack <= this.item.maxStack;
+    }
+
+    decrease(amount = 1){
         if(!this.item){
             return;
         }
@@ -154,6 +169,9 @@ class ItemFrame extends Panel {
     }
 
     canTakeItem(item){
+        if(!this.filterItems(item)){
+            return false;
+        }
         if(!this.canItemBePlacedHere){
             return false;
         }
@@ -166,14 +184,22 @@ class ItemFrame extends Panel {
      * takes an item keeps as much of it as it can and retur the rest or whole content to be grabbed again
      */
     takeItem(item){
+        if(!this.filterItems(item)){
+            return item;
+        }
         if(!this.canItemBePlacedHere){
             if(item){
                 return item;
             } else {
+                if(this.item){
+                    const amount = this.item.stack;
+                    console.log("1");
+                    window.setTimeout(() => {this.ontake(amount); console.log("30");}, 0)
+                }
+                const returnItem = this.item;
+                this.holdItem(null);
                 this.onchange();
-                this.ontake(this.item.stack);
-                console.log("take: " + this.item.stack)
-                return this.item;
+                return returnItem;
             }
         }
         const previousItem = this.item;
@@ -196,7 +222,7 @@ class ItemFrame extends Panel {
         this.onchange();
     }
 
-    takeItemKeepOwn(item){
+    takeItemKeepOwn(item) {
         if(!this.canItemBePlacedHere){
             return item;
         }
@@ -216,10 +242,15 @@ class ItemFrame extends Panel {
         return item;
     }
 
-    holdItem(item){
+    holdItem(item) {
+        if(item) {
+            if(!this.filterItems(item)) {
+                return item;
+            }
+        }
         this.remove(this.item);
         this.item = item;
-        if(item !== undefined && item !== null){
+        if(item){
             item.x = 0;
             item.y = 0;
             this.add(item);
@@ -256,7 +287,7 @@ class CraftingFrame extends Panel {
         this.frameMargin = frameMargin;
         this.inventory = inventory;
 
-        this.resultFrame = new ItemFrame(frameSize * 4, frameSize * 1.1, frameSize, frameSize, "#999", inventory);
+        this.resultFrame = new ItemFrame(frameSize * 4, frameSize * 1.1, frameSize, frameSize, inventory);
         this.resultFrame.canItemBePlacedHere = false;
         this.resultFrame.holdItem(null);
         this.add(this.resultFrame);
@@ -267,7 +298,7 @@ class CraftingFrame extends Panel {
         for (let y = 0; y < this.maxScale; y++) {
             this.craftingFrames[y] = [];
             for (let x = 0; x < this.maxScale; x++) {
-                const craftFrame = new ItemFrame(x * (frameSize + frameMargin), y * (frameSize + frameMargin), frameSize, frameSize, "#999", inventory);
+                const craftFrame = new ItemFrame(x * (frameSize + frameMargin), y * (frameSize + frameMargin), frameSize, frameSize, inventory);
                 craftFrame.holdItem(null);
                 craftFrame.onchange = () => {this.update()};
                 this.add(craftFrame);
@@ -275,7 +306,7 @@ class CraftingFrame extends Panel {
             }
         }
 
-        this.resultFrame.ontake = (taken) => this.decreaseIngredients(Math.min(this.crafted, taken));
+        this.resultFrame.ontake = (taken) => {this.decreaseIngredients(Math.min(this.crafted, taken)); this.update()};
     }
     
     getIngredients() {
@@ -313,7 +344,8 @@ class CraftingFrame extends Panel {
     }
 
     update() {
-        window.setTimeout(() => {
+        console.log("updating");
+        // window.setTimeout(() => {
             // console.log("update")
             const craftingResult = Item.craft(this.getIngredients());
             if(craftingResult){
@@ -324,7 +356,7 @@ class CraftingFrame extends Panel {
             } else{
                 this.resultFrame.holdItem(null);
             }
-        }, 0);
+        // }, 0);
     }
 
     hideAllFrames(){
@@ -358,11 +390,33 @@ class CraftingFrame extends Panel {
 class InventoryAddon extends Panel{
 
     constructor(){
-
+        super(0, 0, 560, 250, "#0000");
+        this.border = false;
+        this.frameSize = 10;
     }
 
-    init() {
-        console.log("implement me");
+    close(){
+        this.dropItems();
+    }
+
+    dropItems(){
+        for (const child of this.children) {
+            if(child instanceof ItemFrame) {
+                this.inventory?.dropItem(child.item, 10000);
+                child.holdItem(null);
+            }
+        }
+    }
+
+    init(frameSize, inventory) {
+        this.frameSize = frameSize;
+        for (const frame of this.children) {
+            if(frame instanceof ItemFrame){
+                frame.width = frameSize;
+                frame.height = frameSize;
+                frame.inventory = inventory;
+            }
+        }
     }
 }
 
@@ -370,14 +424,88 @@ class FurnanceInventory extends InventoryAddon {
 
     constructor(furnance){
         super();
+        this.furnance = furnance;
+
+        this.fireFrame = new ItemFrame(200, 140, 100, 100,  null);
+        this.fireFrame.filterItems = (item) => !item || item?.fuel > 0
+        this.fireFrame.holdItem(null);
+
+        this.oreFrame = new ItemFrame(200, 40, 100, 100, null);
+        this.oreFrame.filterItems = (item) => !item || item?.getFurnanceResult()
+        this.oreFrame.holdItem(null);
+
+        this.resultFrame = new ItemFrame(350, 90, 100, 100, null);
+        this.resultFrame.canItemBePlacedHere = false;
+        this.resultFrame.holdItem(null);
+
+        this.add(this.fireFrame);
+        this.add(this.oreFrame);
+        this.add(this.resultFrame);
+
+        this.fireFrame.onchange = () => {this.update()};
+        this.oreFrame.onchange = () => {this.update()};
+
+        /**
+         * progressbars
+         */
+        this.flameBorder = new Panel(190, 140, 10, 100, "#444");
+        this.flame = new Panel(190, 140, 10, 100, "orange");
+
+        this.progressBorder = new Panel(340, 90, 10, 100, "#444");
+        this.progress = new Panel(340, 90, 10, 100, "cyan");
+
+        this.add(this.flameBorder);
+        this.add(this.flame);
+
+        this.add(this.progressBorder);
+        this.add(this.progress);
     }
 
-    init(frameSize){
-        this.framesize = frameSize;
-        for (const frames of this.frames) {
-            frame.width = frameSize;
-            frame.height = frameSize;
+    update() {
+        const fuelItem = this.fireFrame.item;
+        const oreItem = this.oreFrame.item;
+        if(fuelItem && oreItem && !this.furnance.activated && this.resultFrame.canTakeItemIgnoreFilters(oreItem.getFurnanceResult())) {
+            this.furnance.activate(fuelItem.fuel);
+            this.fireFrame.decrease();
         }
+        if(!oreItem){
+            this.furnance.deactivate();
+        }
+    }
+
+    burn() {
+        const oreItem = this.oreFrame.item;
+        if(oreItem) {
+            const result = oreItem.getFurnanceResult();
+            this.oreFrame.decrease();
+            if(!this.resultFrame.item){
+                this.resultFrame.holdItem(result);
+            } else {
+                this.resultFrame.decrease(-1);
+            }
+            this.update();
+        }
+    }
+
+    draw(drawer, x, y) {
+        this.flameBorder.height = this.frameSize;
+        this.progressBorder.height = this.frameSize;
+
+        const fuel = this.furnance.fuel / this.furnance.maxFuel;
+        this.flame.height = fuel * this.frameSize;
+        this.flame.y = 140 + this.frameSize - fuel * this.frameSize
+
+        const progress = this.furnance.progress;
+        this.progress.height = progress * this.frameSize;
+        this.progress.y = 90 + this.frameSize - progress * this.frameSize
+
+        super.draw(drawer, x, y);
+    }
+    /**
+     * override super behavior
+     */
+    close(){
+        // do nothing
     }
 }
 
@@ -400,7 +528,7 @@ class Inventory extends Panel {
         this.height = 600;
         this.padding = 20;
         this.centered = true;
-        this.color = "#AAAA";
+        this.color = "#AAAD";
         this.border = true;
         this.borderColor = "#444";
         this.useCrafting = true;
@@ -418,20 +546,21 @@ class Inventory extends Panel {
         this.grabbedItem = null;
 
         const rowWidth = this.innerWidth;
-        const itemWidth = (rowWidth - (this.cols - 1) * this.itemMargin * 1) / this.cols;
+        this.itemWidth = (rowWidth - (this.cols - 1) * this.itemMargin * 1) / this.cols;
 
         for (let row = 0; row < this.rows; row++) {
+
             /**
              * row
              */
-            
-            const itemRow = new Panel(0, this.innerHeight - (row + 2.3) * (itemWidth + this.itemMargin), rowWidth, itemWidth, "#0000");
+            const itemRow = new Panel(0, this.innerHeight - (row + 2.3) * (this.itemWidth + this.itemMargin), rowWidth, this.itemWidth, "#0000");
             itemRow.border = false;
+
             /**
              * column
              */
             for (let i = 0; i < this.cols; i++) {
-                const itemFrame = new ItemFrame(i * (itemWidth + this.itemMargin), 0, itemWidth, itemWidth, "#999", this);
+                const itemFrame = new ItemFrame(i * (this.itemWidth + this.itemMargin), 0, this.itemWidth, this.itemWidth, this);
                 itemRow.add(itemFrame);
             }
 
@@ -439,20 +568,18 @@ class Inventory extends Panel {
             this.add(itemRow);
             if(row === this.rows - 1){
                 this.hotbar = itemRow;
-                itemRow.y = this.innerHeight - itemWidth * 1;
+                itemRow.y = this.innerHeight - this.itemWidth * 1;
             }
         }
 
         /**
          * crafting frame
          */
-        this.craftingFrame = new CraftingFrame(3, itemWidth, this.itemMargin, this);
+        this.craftingFrame = new CraftingFrame(3, this.itemWidth, this.itemMargin, this);
         this.add(this.craftingFrame);
 
         this.hotbar.children[0].active = true;
         this.entity.holdItem(this.hotbar.children[0].item);
-
-
 
         Inventory.allInventories.push(this);
     }
@@ -476,7 +603,7 @@ class Inventory extends Panel {
 
     static closeAll(){
         for (const inventory of Inventory.allInventories) {
-            inventory.opened = false;
+            inventory.close();
         }
     }
 
@@ -485,19 +612,32 @@ class Inventory extends Panel {
         this.craftingFrame.visible = true;
         this.craftingFrame.size = 3;
         this.opened = true;
-
     }
 
     open(addon){
+        Inventory.closeAll();
         if(addon){
             this.craftingFrame.visible = false;
-            this.addon = addon;
-            this.add(addon);
+            this.attatchAddon(addon)
         } else{
             this.craftingFrame.visible = true;
+            this.craftingFrame.size = 2;
         }
         this.opened = true;
-        
+   }
+
+   attatchAddon(addon) {
+        this.addon = addon;
+        this.add(addon);
+        this.addon.inventory = this;
+        addon.init(this.itemWidth, this)
+   }
+
+   detatchAddon() {
+        if(this.addon){
+            this.addon.close();
+            this.remove(this.addon);
+        }
    }
 
    close(){
@@ -506,6 +646,7 @@ class Inventory extends Panel {
         this.remove(this.grabbedaItem);
         this.grabbedItem = null;
         this.craftingFrame.dropItems();
+        this.detatchAddon();
    }
 
    toggle(){
@@ -554,13 +695,14 @@ class Inventory extends Panel {
                         this.remove(this.grabbedItem);
                         this.grabbedItem = null;
                     }
-                } else{
+                    // this.remove(this.grabbedItem);
+                } else if(frame.filterItems(this.grabbedItem)){
                     this.remove(this.grabbedItem);
                     const newGrabber = frame.getItem();
                     frame.takeItem(this.grabbedItem);
                     this.grabbedItem = newGrabber;
+                    this.remove(this.grabbedItem);
                 }
-                this.remove(this.grabbedItem);
 
             } else{//not yet grabbing
                 this.grabbedItem = frame.getHalf();
@@ -993,9 +1135,15 @@ class Player extends Entity {
     }
 
     keydown(e, keyStatus) {
-        if(keyPressed("inventory", keyStatus)){
-            this.inventory.toggle();
-            this.controller.active = !this.inventory.opened;
+        let opened = false;
+        if(keyPressed("openInventory", keyStatus) && !this.inventory.opened){
+            this.inventory.open();
+            this.controller.active = false;
+            opened = true;
+        }
+        if(keyPressed("closeInventory", keyStatus) && !opened){
+            this.inventory.close();
+            this.controller.active = true;
         }
         if(keyPressed("dropItem", keyStatus)) {
             const amount = e.originalEvent.ctrlKey ? 100000 : 1;
@@ -1041,7 +1189,7 @@ class Player extends Entity {
         }
     }
 
-    mouseup(e){
+    mouseup(e) {
         if(e.originalEvent.button === Panel.LEFT_CLICK){
             this.leftMouseDown = false;
         }
@@ -1312,7 +1460,7 @@ class Camera extends Point {
         super(x, y);
         this.scale = scale;
         this.minScale = 7;
-        this.maxScale = 300;
+        this.maxScale = 50;
         this.vel = new Point();
         this.target = target;
     }
@@ -1457,16 +1605,12 @@ class World{
         this.lastTo = 0;
         this.blockBuffer = 20;//buffer of chunks to left and right from the screen
         this.chunkSize = 32;//width in blocks of a single chunk
-        this.maxLoadedColumns = 400; //older chunks will get deleted when this number gets exeeded
+        this.maxLoadedColumns = 200; //older chunks will get deleted when this number gets exeeded
         this.lastLoadedChunk = undefined;
         this.idChunk = 0;
     }
 
     loadChunks(fromX, toX){
-        // console.log("loading from " + fromX + " to " + toX);
-        // if(fromX > this.lastFromX - this.blockBuffer && toX < this.lastToX + this.blockBuffer){
-        //     return;
-        // }
         this.lastFromX = fromX;
         this.lastToX = toX;
         fromX = Math.floor(fromX);
@@ -1636,6 +1780,11 @@ class World{
             block.placed = true;
             return [block];
         }
+        if(x === 1 && y === 53){
+            const block = new Furnance(x, y, this);
+            block.placed = true;
+            return [block];
+        }
         const noise = Noise.noise(x / 6, y / 6) / 2 + 0.5;
         const xNoise = Noise.noise(x * 0.03, 0);
 
@@ -1679,7 +1828,7 @@ class World{
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
-            ["Leaf", "Leaf", "Oaklog", "Leaf", "Leaf"],
+            ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             ["Leaf", "Leaf", "Oaklog", "Leaf", null],
             [null,    "Leaf", "Oaklog", "Leaf", null],
             [null,    null, "Oaklog", null, null],
@@ -1688,7 +1837,7 @@ class World{
             [null, null, "Leaf", null, null],
             [null, "Leaf", "Leaf", "Leaf", null],
             ["Leaf", "Leaf", "Leaf", "Leaf", null],
-            ["Leaf", "Leaf", "Oaklog", "Leaf", "Leaf"],
+            ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             [null,   "Leaf", "Oaklog", "Leaf", null],
             [null,    "Leaf", "Oaklog", "Leaf", null],
             [null,    null, "Oaklog", null, null],
@@ -1899,7 +2048,7 @@ class World{
     }
 
     mousedown(e){
-        if(e.button === Panel.RIGHT_CLICK){
+        if(e.button === Panel.RIGHT_CLICK && !this.game.activePlayer.inventory.opened){
             const cursor = this.game.cursor;
             if(cursor){
                 const blocks = this.getBlock(cursor.x, cursor.y);
