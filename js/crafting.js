@@ -113,5 +113,19 @@ const CRAFTING_RECIPES = [
             [null, "stick", null],
             [null, "stick", null]
         ],
+    },{
+        getResult: () => new Torck(),
+        recipe: [
+            [null, null, null],
+            [null, "coal", null],
+            [null, "stick", null]
+        ],
+    },{
+        getResult: () => new Torck(),
+        recipe: [
+            [null, null, null],
+            [null, "CharCoal", null],
+            [null, "stick", null]
+        ],
     },       
 ]

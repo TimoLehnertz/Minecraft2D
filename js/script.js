@@ -103,6 +103,11 @@ class ItemFrame extends Panel {
             item.stack = 20;
             this.holdItem(item);
         }
+        if(Math.random() < 0.4){
+            const item = new Torch();
+            item.stack = 20;
+            this.holdItem(item);
+        }
     }
 
     draw(drawer, x = 0, y = 0, filter = ""){
@@ -931,15 +936,16 @@ class Entity extends Point {
     }
 
     tick(elapsed, world, keys){
-        /**
-         * gravity
-         */
+        
         this.life = Math.min(this.life + this.regenRate, this.maxLife);
 
         if(this.controller){
             this.controller.tick(elapsed, keys, world.game);
         }
 
+        /**
+         * gravity
+         */
         this.vel.add(new Point(0, -this.gravity / elapsed));
         
         this.move(world, elapsed);
@@ -954,11 +960,11 @@ class Entity extends Point {
         /**
          * light
          */
-        if(this.game.time - this.lastLightUpdate > 10){
+        // if(this.game.time - this.lastLightUpdate > ){
             const center = this.hitbox.center;
-            this.light = this.game.world.getLightAt(center.x, center.y);
-            this.lastLightUpdate = this.game.time;
-        }
+            this.light = Math.max(this.game.world.getSourceLight(center.x, center.y) + this.game.world.sunLightAt(this.game.world.surfaceLevelAt(center.x), center.y), 0);
+            // this.lastLightUpdate = this.game.time;
+        // }
     }
 
     move(world, elapsed){
@@ -1115,14 +1121,16 @@ class Entity extends Point {
                 this.game.spawnEntity(droppedItem);
             }
         }
+        delete this.inventory;
     }
 }
 
 class Zombie extends Entity {
     
-    constructor(game, x = 0, y = 53){
+    constructor(game, x = 0, y = 100){
         super(x, y, 0.9, 1.8, "zombie", textureAtlasMap.zombie, new Hitbox(0.1, 0, 0.8, 1.8), game, 20, true, false);
         this.controller = new MobController(this);
+        // this.vel.y = -1;
     }
 
     getDrops() {
@@ -1309,6 +1317,11 @@ class Player extends Entity {
         this.isPlayer = true;
     }
 
+    die() {
+        super.die();
+        window.setTimeout(() => this.game.respawnPlayer(), 2000);
+    }
+
     getDrops() {
         const drops = this.inventory.getAllItems();
         this.inventory.clear();
@@ -1450,15 +1463,21 @@ class Game {
 
         this.time = 0;
 
-        this.initPlayer(this.world.entities[0]);
+        this.respawnPlayer();
+        this.inputEventListener.push(this.world);
     }
 
     initPlayer(player){
+        if(this.activePlayer){
+            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer.inventory), 1);
+            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer), 1);
+        }
+
         this.activePlayer = player;
         this.camera.target = this.activePlayer;
         this.inputEventListener.push(this.activePlayer);
         this.inputEventListener.push(this.activePlayer.inventory);
-        this.inputEventListener.push(this.world);
+        this.world.spawnEntity(player);
     }
 
     init(){
@@ -1566,12 +1585,6 @@ class Game {
          * overlays
          */
         this.drawOverlays();
-        // const cursor = this.cursor;
-        // if(cursor){
-        //     this.hoverBlocks = this.world.getBlock(cursor.x, cursor.y);
-        // } else{
-        //     this.hoverBlocks = null;
-        // }
         Inventory.drawAll(this.drawer, elapsed);
 
         if(this.debug){
@@ -1581,7 +1594,7 @@ class Game {
 
     drawOverlays(){
         this.hoverBlocks = null;
-        if(this.activePlayer.inventory.opened){
+        if(this.activePlayer?.inventory?.opened){
             return;
         }
         const cursor = this.cursor;
@@ -1665,6 +1678,10 @@ class Game {
 
     spawnEntity(entity) {
         return this.world.spawnEntity(entity);
+    }
+
+    respawnPlayer(){
+        this.initPlayer(new Player(this));
     }
 }
 
@@ -1863,7 +1880,6 @@ class World{
     constructor(game, width = 10000, height = 256, seed = 1){
         this.game = game;
         this.entities = [];// everything wich is not a block
-        this.entities.push(new Player(game));
         this.changedBlocks = [];
         this.width = width;
         this.height = height;
@@ -1874,6 +1890,7 @@ class World{
          */
         this.chunks = [];
         this.loadedChunks = [];
+        this.lightSources = []
         this.loadedFrom = 0;
         this.loadedToX = 0;
         this.lastFromX = 0;
@@ -1886,7 +1903,7 @@ class World{
         /**
          * testing
          */
-        const zombie = new Zombie(this.game, 0, 70);
+        const zombie = new Zombie(this.game, 0, 150);
         this.entities.push(zombie);
     }
 
@@ -1930,7 +1947,13 @@ class World{
         console.log("loading chunk at x=" + x + ", total chunks: " + this.loadedChunks.length);
         this.chunks[World.xToIndex(x)] = [];
         for (let y = 0; y <= this.height; y++) {
-            this.chunks[World.xToIndex(x)][y] = this.worldFunction(x, y);
+            const block = this.worldFunction(x, y);
+            this.chunks[World.xToIndex(x)][y] = block;
+            if(block){
+                if(block.emission > 0){
+                    this.lightSources.push(block);
+                }
+            }
         }
         this.loadedChunks.push(x);
         this.cleanChunks();
@@ -1947,6 +1970,9 @@ class World{
         if(!this.loadedChunks.includes(x)){
             return;
         }
+        this.lightSources.filter(e => {
+            return e.pos.x === x;
+          });
         console.log("deleting chunk at x=" + x);
         this.chunks[World.xToIndex(x)] = undefined;
         this.loadedChunks.splice(this.loadedChunks.indexOf(x), 1);
@@ -1965,7 +1991,7 @@ class World{
         return this.loadedChunks.includes(x);
     }
 
-    columnFromChunks(x){
+    columnFromChunks(x) {
         if(!this.blockLoaded(x)){
             this.loadChunk(x);
         }
@@ -2033,7 +2059,7 @@ class World{
 
     buildBlock(block, x, y) {
         if(x > this.height || y < 0) {
-            return;
+            return false;
         }
         x = Math.floor(x);
         y = Math.ceil(y);
@@ -2050,18 +2076,35 @@ class World{
         }
 
         if(prevBlocks?.[block.layer]){
-            console.log(prevBlocks);
-            console.log("layer")
+            // console.log(prevBlocks);
+            // console.log("layer")
             return false;
         }
 
 
         if(!this.canBlockBeplacedHere(x, y, block.layer)){
-            console.log("no")
+            // console.log("no")
             return false;
         }
 
+        if(block.needsSolidBlockBelow){
+            const blockBelow = this.getBlockIgnoreUnloaded(x, y - 1);
+            if(!blockBelow) return false;
+            if(!blockBelow?.[block.layer]) return false;
+            if(!blockBelow[block.layer].solid) return false;
+        }
+
         block = block.clone();
+
+
+        if(block.emission > 0){
+            this.changeLightSource(x, y, block.emissisonRange, block.emission);
+            this.lightSources.push(block);
+            // console.log(this.lightSources)
+        }
+
+        block.sourceLight = this.getSourceLight(x, y) + block.emission;
+
         block.pos.x = x;
         block.pos.y = y;
         block.placed = true;
@@ -2069,6 +2112,8 @@ class World{
         block.width = 1;
         block.height = 1;
         block.world = this;
+        
+        block.sunLight = this.sunLightAt(this.surfaceLevelAt(x), y);
 
         const column = this.columnFromChunks(x);
         if(column[y] === null){ // air
@@ -2102,8 +2147,20 @@ class World{
         // console.log(((a[layer]?.solid || b[layer]?.solid || c[layer]?.solid || d[layer]?.solid) || self)
         // && !(a[layer]?.solid && b[layer]?.solid && c[layer]?.solid && d[layer]?.solid))
         
-        return ((a || b || c || d) || self)
+        return ((a || b || c || d) || self) && !(a?.[layer]?.solid && b?.[layer]?.solid && c?.[layer]?.solid && d?.[layer]?.solid)
         // && !(a[layer]?.solid && b[layer]?.solid && c[layer]?.solid && d[layer]?.solid);
+    }
+
+    sunLightAt(surfaceLevel, y){
+        return Math.max(0.05, Math.min(1, (surfaceLevel - y) / -5 + 1)); 
+    }
+
+    surfaceLevelAt(x){
+        const surfaceMin = 100;
+        const surfaceMax = 130;
+        const xNoise = Noise.noise(x * 0.01, 0);
+        const xNoiseSmall = Noise.noise(x * 0.05, 0);
+        return Math.round(surfaceMin + (xNoise + xNoiseSmall * 0.2) * (surfaceMax - surfaceMin))
     }
 
     worldFunction(x, y){
@@ -2336,7 +2393,12 @@ class World{
          * filling
          */
         if(blocks.length === 0 && !cave){
-            blocks[0] = new Stone(x, y, this);
+            const fillNoise = Noise.noise(x / 20, y / 20);
+            if(fillNoise < 0.6){
+                blocks[0] = new Stone(x, y, this);
+            } else {
+                blocks[0] = new Gravel(x, y, this);
+            }
         }
 
         // if(!blocks[1]){
@@ -2347,8 +2409,9 @@ class World{
         // }
 
         for (const block of blocks) {
-            if(block){
-                block.light = Math.max(0.05, Math.min(1, (surfaceLevel - y) / -5 + 1));
+            const sunLight = this.sunLightAt(surfaceLevel, y)
+            if(block) {
+                block.sunLight = sunLight;
                 block.placed = true;
             }
         }
@@ -2443,7 +2506,7 @@ class World{
                 if(!column?.[y]) continue;
                 const blocks = column[y];
 
-                if(!blocks?.[0]){
+                if(!blocks?.[0]?.solid){
                     blocks?.[1]?.draw(drawer, camera);
                 }
                 blocks?.[0]?.draw(drawer, camera);
@@ -2461,22 +2524,22 @@ class World{
         this.entities.push(entity);
     }
 
-    recalculateLightInRect(startX, startY, width, height){
-        console.log("width: " + width);
-        console.log("height: " + height);
-        console.log("recalculating: " + width * height + " blocks");
-        for (let x = startX; x <= startX + width; x++) {
-            for (let y = startY; y >= startX - height; y--) {
-                const blocks = this.getBlock(x, y);
-                if(!blocks) continue;
-                const light = this.getLightAt(x, y);
-                for (const block of blocks) {
-                    if(!block) continue;
-                    block.light = light;
-                }
-            }
-        }
-    }
+    // recalculateLightInRect(startX, startY, width, height){
+    //     console.log("width: " + width);
+    //     console.log("height: " + height);
+    //     console.log("recalculating: " + width * height + " blocks");
+    //     for (let x = startX; x <= startX + width; x++) {
+    //         for (let y = startY; y >= startX - height; y--) {
+    //             const blocks = this.getBlock(x, y);
+    //             if(!blocks) continue;
+    //             const light = this.getLightAt(x, y);
+    //             for (const block of blocks) {
+    //                 if(!block) continue;
+    //                 block.light = light;
+    //             }
+    //         }
+    //     }
+    // }
 
     destroyBlock(block, layer = 0){
         block.break();
@@ -2488,7 +2551,6 @@ class World{
             column[block.pos.y] = null;
         }
         const blockAbove = column[block.pos.y + 1];
-        // console.log(blockAbove)
         if(blockAbove && block.solid) {
             let i = 0;
             for (const block of blockAbove) {
@@ -2497,6 +2559,12 @@ class World{
                 }
                 i++;
             }
+        }
+        if(this.lightSources.includes(block)){
+            this.lightSources.splice(this.lightSources.indexOf(block), 1);
+        }
+        if(block.emission > 0){
+            this.changeLightSource(block.pos.x, block.pos.y, block.emissisonRange, -block.emission);
         }
         this.blockChanged(block.pos.x, block.pos.y);
     }
@@ -2510,7 +2578,7 @@ class World{
         }
         const blocks = this.getBlock(x, y);
         this.changedBlocks[World.xToIndex(x)][y] = blocks;
-        this.recalculateLightInRect(x - 5, y + 5, 10, 10);
+        // this.recalculateLightInRect(x - 5, y + 5, 10, 10);
     }
 
     mousedown(e){
@@ -2528,38 +2596,38 @@ class World{
         }
     }
 
-    getLightAt(x, y) {
-        const directions = [
-            // new Point(0, 1),
-            new Point(1, 0),
-            new Point(-1, 0),
-            new Point(0, -1),
-            new Point(0, 1),
-
-            new Point(1, 1),
-            new Point(-1, 1),
-            new Point(1, -1),
-            new Point(-1, -1),
-        ]
-        const origin = new Point(x, y);
-        const maxLevel = 3;
-        const minLight = 0.05;
-        let max = 0;
-        for (let dir = 0; dir < directions.length; dir++) {
-            const test = new Point(x, y);
-            for (let i = 0; i < maxLevel; i++) {
-                test.add(directions[dir]);
-                const blocks = this.getBlockIgnoreUnloaded(test.x, test.y);
-                if(!blocks){
-                    // console.log()
-                    const distance = origin.distanceFrom(test);
-                    max = Math.max(max, (maxLevel - (distance * 0.8 - 1)) / maxLevel);
-                    if(max >= 1) return Math.max(max, minLight);
-                    // max = Math.max(max, (maxLevel - i) / maxLevel)
+    /**
+     * 
+     * @param {*} strength can be negative
+     */
+    changeLightSource(xOrigin, yOrigin, radius, strength) {
+        const origin = new Point(xOrigin, yOrigin);
+        for (let x = xOrigin - radius; x <= xOrigin + radius; x++) {
+            for (let y = yOrigin + radius; y >= yOrigin - radius; y--) {
+                const point = new Point(x, y);
+                const influence = Math.max(((radius - origin.distanceFrom(point)) / radius), 0);
+                const light = influence * strength;
+                const blocks = this.getBlockIgnoreUnloaded(x, y);
+                if(!blocks) continue;
+                for (const block of blocks) {
+                    if(!block) continue;
+                    block.sourceLight += light;
                 }
             }
         }
-        return Math.max(max, minLight);
+    }
+
+
+    getSourceLight(x, y) {
+        let light = 0;
+        const origin = new Point(x, y);
+        const point = new Point(x, y);
+        for (const source of this.lightSources) {
+            const point = new Point(source.pos.x, source.pos.y);
+            const influence = Math.max(((source.emissisonRange - origin.distanceFrom(point)) / source.emissisonRange), 0);
+            light += influence * source.emission;
+        }
+        return light;
     }
 }
 

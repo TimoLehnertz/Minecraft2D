@@ -172,6 +172,7 @@ const textureAtlasMap = {
         width: 1,
         height: 1
     },
+    gravel: { x: 32, y: 0, width: 1, height: 1},
     stone: { x: 37, y: 3, width: 1, height: 1},
     diamondAxe: { x: 43, y: 14, width: 1, height: 1},
     caveBackground: { x: 32, y: 21, width: 1, height: 1},
@@ -234,6 +235,7 @@ const textureAtlasMap = {
     bedrock: { x: 11, y: 26, width: 1, height: 1},
     stick: { x: 1, y: 25, width: 1, height: 1},
     heart: { x: 12, y: 23, width: 1, height: 1},
+    torch: { x: 36, y: 9, width: 1, height: 1},
 
     /**
      * food
@@ -438,6 +440,9 @@ class Block extends Item {
         this.fuel = setup.fuel ?? itemSetup?.fuel ?? 0
         this.getFurnanceResult = setup.getFurnanceResult ?? itemSetup?.getFurnanceResult ?? (() => null);
         this.needsSolidBlockBelow = setup.needsSolidBlockBelow ?? false;
+        this.emission = setup.emission ?? 0;
+        this.emissisonRange = setup.emissisonRange ?? 0;
+        this.canFall = setup.canFall ?? false;
         
         this.hitbox = setup.hitbox ?? new Hitbox(0, 0, 1, 1);
         this.hitbox.gPosRef = this.pos;
@@ -446,8 +451,10 @@ class Block extends Item {
         this.border = false;
         this.showHitbox = false;
         this.placed = false;
+        this.falling = false;
         this.broken = 0;
-        this.light = 1;
+        this.sunLight = 1;
+        this.sourceLight = 0;
     }
 
     draw(drawer, camera, y) {
@@ -461,8 +468,10 @@ class Block extends Item {
         const texName = texturepack;
         const screen = camera.worldToScreen(this.pos, drawer.screen);
 
+        const light = Math.max(this.sunLight, this.sourceLight);
+
         drawer.draw(texName, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
-            this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, "", this.light);
+            this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, "", light);
 
         if(this.border){
             drawer.draw(texName, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
@@ -523,19 +532,14 @@ class Block extends Item {
         this.world.spawnEntity(droppedItem);
     }
 
+    blockBelowBroke() {
+        if(this.canFall) {
+            this.falling = true;
+        }
+    }
+
     clone(){
-        // const cpy = new Block(this.name, this.x, this.y, this.tetxure, this.textureMeta, this.type, this.maxStack, this.world, this.setup, this.itemSetup);
-        // cpy.stack = this.stack;
-        // cpy.width = this.width;
-        // cpy.height = this.height;
-        // cpy.solid = this.solid;
-        // cpy.onrightclick = this.onrightclick;
-        // cpy.fuel = this.fuel;
-        // cpy.getDrop = this.getDrop;
-        // return cpy;
         const cpy = new this.constructor();
-        // console.log(cpy);
-        // const cpy = 
         return cpy;
     }
 }
@@ -557,7 +561,8 @@ class WoodenPickaxe extends Item {
         super("Wooden_pickaxe", texturepack, textureAtlasMap.woodenPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_WOOD,
             breakLevel: Item.CAN_BREAK_STONE,
-            fuel: 1
+            fuel: 1,
+            maxStack: 1,
         });
     }
 }
@@ -566,7 +571,8 @@ class WoodenAxe extends Item {
     constructor(){
         super("Wooden_axe", texturepack, textureAtlasMap.woodenAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_WOOD,
-            fuel: 1
+            fuel: 1,
+            maxStack: 1,
         });
     }
 }
@@ -575,7 +581,8 @@ class WoodenShovel extends Item {
     constructor(){
         super("Wooden_shovel", texturepack, textureAtlasMap.woodenShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_WOOD,
-            fuel: 1
+            fuel: 1,
+            maxStack: 1,
         });
     }
 }
@@ -584,7 +591,8 @@ class WoodenSword extends Item {
     constructor(){
         super("Wooden_sword", texturepack, textureAtlasMap.woodenSword, Item.TYPE_SWORD, {
             attackDmg: 3,
-            fuel: 1
+            fuel: 1,
+            maxStack: 1,
         });
     }
 }
@@ -592,7 +600,8 @@ class WoodenSword extends Item {
 class WoodenHoe extends Item {
     constructor() {
         super("Wooden_hoe", texturepack, textureAtlasMap.woodenHoe, Item.TYPE_HOE, {
-            fuel: 1
+            fuel: 1,
+            maxStack: 1,
         });
     }
 }
@@ -604,7 +613,8 @@ class StonePickaxe extends Item {
     constructor(){
         super("Stone_pickaxe", texturepack, textureAtlasMap.stonePickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_STONE,
-            breakLevel: Item.CAN_BREAK_STONE
+            breakLevel: Item.CAN_BREAK_STONE,
+            maxStack: 1,
         });
     }
 }
@@ -613,6 +623,7 @@ class StoneAxe extends Item {
     constructor(){
         super("Stone_axe", texturepack, textureAtlasMap.stoneAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_STONE,
+            maxStack: 1,
         });
     }
 }
@@ -621,6 +632,7 @@ class StoneShovel extends Item {
     constructor(){
         super("Stone_shovel", texturepack, textureAtlasMap.stoneShovel, Item.TYPE_SHOVEL, {
             efficiency: Item.EFFICIENCY_STONE,
+            maxStack: 1,
         });
     }
 }
@@ -628,7 +640,8 @@ class StoneShovel extends Item {
 class StoneSword extends Item {
     constructor(){
         super("Stone_sword", texturepack, textureAtlasMap.stoneSword, Item.TYPE_SWORD, {
-            attackDmg: 4
+            attackDmg: 4,
+            maxStack: 1,
         });
     }
 }
@@ -636,6 +649,7 @@ class StoneSword extends Item {
 class StoneHoe extends Item {
     constructor(){
         super("Wooden_hoe", texturepack, textureAtlasMap.stoneHoe, Item.TYPE_HOE, {
+            maxStack: 1,
         });
     }
 }
@@ -646,8 +660,9 @@ class StoneHoe extends Item {
 class IronPickaxe extends Item {
     constructor(){
         super("Iron_pickaxe", texturepack, textureAtlasMap.ironPickaxe, Item.TYPE_PICKAXE, {
+            maxStack: 1,
             efficiency: Item.EFFICIENCY_IRON,
-            breakLevel: Item.CAN_BREAK_DIAMONDS
+            breakLevel: Item.CAN_BREAK_DIAMONDS,
         });
     }
 }
@@ -655,6 +670,7 @@ class IronPickaxe extends Item {
 class IronAxe extends Item {
     constructor(){
         super("Iron_axe", texturepack, textureAtlasMap.ironAxe, Item.TYPE_AXE, {
+            maxStack: 1,
             efficiency: Item.EFFICIENCY_STONE,
         });
     }
@@ -663,6 +679,7 @@ class IronAxe extends Item {
 class IronShovel extends Item {
     constructor(){
         super("Iron_shovel", texturepack, textureAtlasMap.ironShovel, Item.TYPE_SHOVEL, {
+            maxStack: 1,
             efficiency: Item.EFFICIENCY_IRON,
         });
     }
@@ -671,6 +688,7 @@ class IronShovel extends Item {
 class IronSword extends Item {
     constructor(){
         super("Iron_sword", texturepack, textureAtlasMap.ironSword, Item.TYPE_SWORD, {
+            maxStack: 1,
             attackDmg: 5
         });
     }
@@ -679,6 +697,7 @@ class IronSword extends Item {
 class IronHoe extends Item {
     constructor(){
         super("Iron_hoe", texturepack, textureAtlasMap.ironHoe, Item.TYPE_HOE, {
+            maxStack: 1,
         });
     }
 }
@@ -690,6 +709,7 @@ class GoldPickaxe extends Item {
     constructor(){
         super("Gold_pickaxe", texturepack, textureAtlasMap.goldPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_GOLD,
+            maxStack: 1,
             breakLevel: Item.CAN_BREAK_DIAMONDS
         });
     }
@@ -698,6 +718,7 @@ class GoldPickaxe extends Item {
 class GoldAxe extends Item {
     constructor(){
         super("Gold_axe", texturepack, textureAtlasMap.goldAxe, Item.TYPE_AXE, {
+            maxStack: 1,
             efficiency: Item.EFFICIENCY_GOLD,
         });
     }
@@ -706,6 +727,7 @@ class GoldAxe extends Item {
 class GoldShovel extends Item {
     constructor(){
         super("Gold_shovel", texturepack, textureAtlasMap.goldSword, Item.TYPE_SHOVEL, {
+            maxStack: 1,
             efficiency: Item.EFFICIENCY_GOLD,
         });
     }
@@ -714,6 +736,7 @@ class GoldShovel extends Item {
 class GoldSword extends Item {
     constructor(){
         super("Gold_sword", texturepack, textureAtlasMap.goldSword, Item.TYPE_SWORD, {
+            maxStack: 1,
             attackDmg: 5
         });
     }
@@ -722,6 +745,7 @@ class GoldSword extends Item {
 class GoldHoe extends Item {
     constructor(){
         super("Gold_hoe", texturepack, textureAtlasMap.goldHoe, Item.TYPE_HOE, {
+            maxStack: 1,
         });
     }
 }
@@ -733,7 +757,8 @@ class DiamondPickaxe extends Item {
     constructor(){
         super("Diamond_pickaxe", texturepack, textureAtlasMap.diamondPickaxe, Item.TYPE_PICKAXE, {
             efficiency: Item.EFFICIENCY_DIAMOND,
-            breakLevel: Item.CAN_BREAK_OBSIDIAN
+            maxStack: 1,
+            breakLevel: Item.CAN_BREAK_OBSIDIAN,
         });
     }
 }
@@ -742,6 +767,7 @@ class DiamondAxe extends Item {
     constructor(){
         super("Diamond_axe", texturepack, textureAtlasMap.diamondAxe, Item.TYPE_AXE, {
             efficiency: Item.EFFICIENCY_DIAMOND,
+            maxStack: 1,
             // attackDmg: 0.5
         });
     }
@@ -750,6 +776,7 @@ class DiamondAxe extends Item {
 class DiamondShovel extends Item {
     constructor() {
         super("Diamond_shovel", texturepack, textureAtlasMap.diamondShovel, Item.TYPE_SHOVEL, {
+            maxStack: 1,
             efficiency: Item.EFFICIENCY_DIAMOND,
         });
     }
@@ -758,6 +785,7 @@ class DiamondShovel extends Item {
 class DiamondSword extends Item {
     constructor(){
         super("Diamond_sword", texturepack, textureAtlasMap.diamondSword, Item.TYPE_SWORD, {
+            maxStack: 1,
             attackDmg: 7,
         });
     }
@@ -766,6 +794,7 @@ class DiamondSword extends Item {
 class DiamondHoe extends Item {
     constructor(){
         super("Diamond_hoe", texturepack, textureAtlasMap.diamondHoe, Item.TYPE_HOE, {
+            maxStack: 1,
         });
     }
 }
@@ -803,7 +832,8 @@ class CaveBackground extends Block {
         super("CaveBackground", x, y, texturepack, textureAtlasMap.caveBackground, Item.TYPE_PICKAXE, world, {
             resistance: 40000000,
             layer: 1,
-            solid: false
+            solid: false,
+            indestructable: true
         });
     }
 }
@@ -1143,6 +1173,13 @@ class Coal extends Item {
     }
 }
 
+class Flint extends Item {
+    constructor(){
+        super("Flint", texturepack, textureAtlasMap.flint, Item.TYPE_NONE, {
+        });
+    }
+}
+
 class Charcoal extends Item {
     constructor(){
         super("Charcoal", texturepack, textureAtlasMap.charCoal, Item.TYPE_NONE, {
@@ -1177,6 +1214,30 @@ class Diamond extends Item {
         super("Stick", texturepack, textureAtlasMap.stick, Item.TYPE_NONE, {
             fuel: 0.5,
             attackDmg: 0.5
+        });
+    }
+}
+
+class Torch extends Block {
+    constructor(x, y, world) {
+        super("Torch", x, y, texturepack, textureAtlasMap.torch, Item.TYPE_PICKAXE, world, {
+            resistance: 1,
+            emission: 0.7, // max blocks of light
+            emissisonRange: 12, // max blocks of light
+            solid: false,
+            needsSolidBlockBelow: true,
+        });
+    }
+}
+
+class Gravel extends Block {
+    constructor(x, y, world) {
+        super("Gravel", x, y, texturepack, textureAtlasMap.gravel, Item.TYPE_SHOVEL, world, {
+            resistance: 100,
+            canFall: true,
+            // emissisonRange: 10,
+            // emision: 1,
+            getDrop: () => Math.random() < 0.9 ? new Gravel() : new Flint(),
         });
     }
 }
