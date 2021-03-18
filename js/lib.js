@@ -297,7 +297,7 @@ class Drawer{
         this.ctx.fillText(text, x, y)
     }
 
-    draw(texture, x, y, width, height, tx = 0, ty = 0, twidth = 16, theight = 16, filter = ""){
+    draw(texture, x, y, width, height, tx = 0, ty = 0, twidth = 16, theight = 16, filter = "", brightness = 1){
         const screen = this.screen;
         if(x > screen.width || x + width < 0 || y > screen.height || y + height < 0){
             return;
@@ -322,13 +322,20 @@ class Drawer{
         //     this.ctx.translate(-(x + width / 2), -(y + height / 2));
         // } else{
             try {
-                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width + 0.6, height + 0);
+                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width + 0.6, height + 0.5);
             } catch (error) {
                 // console.log(texture);
                 // console.log(error);
 
             }
             this.ctx.filter = "none";
+            if(brightness < 1){
+                brightness = brightness * -1 + 1;
+                // brightness = Math.round(brightness * 16);
+                // console.log(brightness.toString(16))
+                // this.fillRect(x, y, width, height, "#000" + brightness.toString(16))
+                this.fillRect(x, y, width, height + 0.6, "rgba(10, 10, 10," + (brightness) + ")")
+            }
         // }
     }
 }

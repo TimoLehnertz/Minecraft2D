@@ -59,7 +59,7 @@ class Noise {
         // this.simplex = 
     }
 
-    static noise(x, y){
+    static noise(x, y = 0){
         noise.seed(Noise.seed);
         return noise.simplex2(x, y);
     }
@@ -105,7 +105,7 @@ class ItemFrame extends Panel {
         }
     }
 
-    draw(drawer, x = 0, y = 0){
+    draw(drawer, x = 0, y = 0, filter = ""){
         if(this.item){
             this.item.width = this.width;
             this.item.height = this.height;
@@ -118,7 +118,7 @@ class ItemFrame extends Panel {
         super.draw(drawer, x, y);
         if(this.active){
             const offset = 4;
-            drawer.draw("atlas", this.globalX - offset, this.globalY - offset, this.width + offset * 2, this.height + offset * 2, textureAtlasMap.activeFrame.x * tileWidth, textureAtlasMap.activeFrame.y * tileWidth, textureAtlasMap.activeFrame.width * tileWidth, textureAtlasMap.activeFrame.height * tileWidth);
+            drawer.draw("atlas", this.globalX - offset, this.globalY - offset, this.width + offset * 2, this.height + offset * 2, textureAtlasMap.activeFrame.x * tileWidth, textureAtlasMap.activeFrame.y * tileWidth, textureAtlasMap.activeFrame.width * tileWidth, textureAtlasMap.activeFrame.height * tileWidth, filter);
         }
     }
 
@@ -774,10 +774,12 @@ class Inventory extends Panel {
                 }
             }
         }
+        this.setActiveHotbar(this.activeIndex);
         if(!item) return;
         for (const itemFrame of this.hotbar.children) {
             if(!itemFrame.item){
                 itemFrame.holdItem(item);
+                this.setActiveHotbar(this.activeIndex);
                 return;
             }
         }
@@ -786,6 +788,7 @@ class Inventory extends Panel {
             for (const itemFrame of itemRow.children) {
                 if(!itemFrame.item){
                     itemFrame.holdItem(item);
+                    this.setActiveHotbar(this.activeIndex);
                     return;
                 }
             }
@@ -835,12 +838,14 @@ class Inventory extends Panel {
         return out;
     }
 
-    clear(parent = this) {
+    clear(parent = this, i = 0) {
         for (const child of parent.children) {
             if(child instanceof ItemFrame){
                 child.holdItem(null);
             } else{
-                this.clear(child);
+                if(i < 10){
+                    this.clear(child, i + 1);
+                }
             }
         }
     }
@@ -869,6 +874,9 @@ class Entity extends Point {
         this.lastHit = 0;
         this.lastDealedHit = 0;
         this.attackCooldown = 450;
+        this.walkingSpeed = 0.2;
+        this.light = 1;
+        this.lastLightUpdate = 0;
 
         if(hasInventory){
             this.inventory = new Inventory(this);
@@ -887,14 +895,15 @@ class Entity extends Point {
     }
 
     walkRight(autojumb = false) {
-        this.vel.add(new Point(12 * ((1000 / 60) / 1000)));
+
+        this.vel.add(new Point(this.walkingSpeed));
         if(autojumb) {
             this.autojumb();
         }
     }
 
     walkLeft(autojumb = false) {
-        this.vel.add(new Point(-12 * ((1000 / 60) / 1000)));
+        this.vel.add(new Point(-this.walkingSpeed));
         if(autojumb) {
             this.autojumb();
         }
@@ -925,7 +934,6 @@ class Entity extends Point {
         /**
          * gravity
          */
-
         this.life = Math.min(this.life + this.regenRate, this.maxLife);
 
         if(this.controller){
@@ -943,13 +951,14 @@ class Entity extends Point {
             this.vel.multiply(new Point(0.97, 0.97));
         }
 
-        // changex = correctedPos.x - lastPos.x;
-        // changey = correctedPos.y - lastPos.y;
-
-        // this.vel.x = changex / (elapsed / 1000);
-        // this.vel.y = changey / (elapsed / 1000);
-
-        // this.vel = correctedPos.clone().subtract(lastPos).multiply(new Point(1000 / elapsed, 1000 / elapsed));
+        /**
+         * light
+         */
+        if(this.game.time - this.lastLightUpdate > 10){
+            const center = this.hitbox.center;
+            this.light = this.game.world.getLightAt(center.x, center.y);
+            this.lastLightUpdate = this.game.time;
+        }
     }
 
     move(world, elapsed){
@@ -1024,7 +1033,8 @@ class Entity extends Point {
     }
 
     getEntitiesInRadius(radius){
-        return this.game.world.getEntitiesInRadius(this.pos.x, this.pos.y, radius, [this]);
+        const center = this.hitbox.center;
+        return this.game.world.getEntitiesInRadius(center.x, center.y, radius, [this]);
     }
 
     draw(drawer, camera){
@@ -1033,9 +1043,12 @@ class Entity extends Point {
         }
         // console.log();
         const screen = camera.worldToScreen(this.pos, drawer.screen);
-        let filter = "";
+        let filter;
+        if(this.light < 1){
+            filter = "brightness(" + Math.min(1, this.light + 0.1) * 100 + "%)";
+        }
         if(this.game.time - this.lastHit < 300){
-            filter = "brightness(130%) hue-rotate(80deg)";
+            filter += "  hue-rotate(80deg)";
         }
         drawer.draw(this.texture, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
             this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, filter);
@@ -1051,7 +1064,7 @@ class Entity extends Point {
             const point = camera.worldToScreen(this.pos.clone().add(new Point(0.62, -0.8)), drawer.screen);
             this.handItem.width = point.size * 0.65;
             this.handItem.height = point.size * 0.65;
-            this.handItem.draw(drawer, point.pos.x, point.pos.y);
+            this.handItem.draw(drawer, point.pos.x, point.pos.y, filter);
         }
     }
 
@@ -1093,7 +1106,6 @@ class Entity extends Point {
         console.log("I died :/");
         this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
         const drops = this.getDrops();
-        console.log(drops);
         if(drops) {
             console.log(drops)
             for (const drop of drops) {
@@ -1110,7 +1122,7 @@ class Zombie extends Entity {
     
     constructor(game, x = 0, y = 53){
         super(x, y, 0.9, 1.8, "zombie", textureAtlasMap.zombie, new Hitbox(0.1, 0, 0.8, 1.8), game, 20, true, false);
-        this.controller = new ZombieController(this);
+        this.controller = new MobController(this);
     }
 
     getDrops() {
@@ -1288,8 +1300,9 @@ class Hitbox {
 
 class Player extends Entity {
 
-    constructor(game, x = 0, y = 53, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
+    constructor(game, x = -1, y = 120, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
         super(x, y, 0.9, 1.8, texture, textureAtlasMap.steve, hitbox, game, 20, true, true);
+        this.vel.y = -1000;
         this.controller = new KeyboardController(this);
         this.leftMouseDown = false;
         this.rightMouseDown = false;
@@ -1383,7 +1396,11 @@ class Player extends Entity {
             canBreakBlock = this.handItem.attackDmg === 0;
         }
         if(this.leftMouseDown && this.game.hoverBlocks && canBreakBlock){
-            this.game.hoverBlocks?.[0]?.hit(elapsed, this.handItem);
+            if(this.game.hoverBlocks?.[0]){
+                this.game.hoverBlocks?.[0]?.hit(elapsed, this.handItem);
+            } else if(this.game.hoverBlocks?.[1]) {
+                this.game.hoverBlocks?.[1]?.hit(elapsed, this.handItem);
+            }
         }
         if(this.rightMouseDown){
             this.buildBlock();
@@ -1549,15 +1566,12 @@ class Game {
          * overlays
          */
         this.drawOverlays();
-        const cursor = this.cursor;
-        if(cursor){
-            this.hoverBlocks = this.world.getBlock(cursor.x, cursor.y);
-            // if(hoverBlocks && hoverBlocks[0]){
-            //     this.hoverBlocks = hoverBlocks;
-            // }
-        } else{
-            this.hoverBlocks = null;
-        }
+        // const cursor = this.cursor;
+        // if(cursor){
+        //     this.hoverBlocks = this.world.getBlock(cursor.x, cursor.y);
+        // } else{
+        //     this.hoverBlocks = null;
+        // }
         Inventory.drawAll(this.drawer, elapsed);
 
         if(this.debug){
@@ -1566,19 +1580,20 @@ class Game {
     }
 
     drawOverlays(){
+        this.hoverBlocks = null;
         if(this.activePlayer.inventory.opened){
             return;
         }
         const cursor = this.cursor;
         if(cursor){
             const hoverBlocks = this.world.getBlock(cursor.x, cursor.y);
-            if(hoverBlocks && hoverBlocks[0]){
-                this.hoverBlocks = hoverBlocks;
-            }
-            const canhover = this.world.canBlockBeplacedHere(cursor.x, cursor.y);
+            const canhover = this.world.canBlockBeAccesed(cursor.x, cursor.y, this.activePlayer?.handItem?.layer ?? 0);
             if(canhover){
                 const pos = this.camera.worldToScreen(new Point(Math.floor(cursor.x), Math.ceil(cursor.y)), this.drawer.screen);
                 this.drawer.rect(pos.pos.x, pos.pos.y, pos.size, pos.size);
+                if(hoverBlocks){
+                    this.hoverBlocks = hoverBlocks;
+                }
             }
         }
         /**
@@ -1602,6 +1617,7 @@ class Game {
             if(hoverBlocks){
                 let blocks = "";
                 for (const block of hoverBlocks) {
+                    if(!block) continue;
                     blocks += ", " + block.name
                 }
                 if(hoverBlocks[0]){
@@ -1643,6 +1659,7 @@ class Game {
         if(!block || !block.canBePlaced || !cursor){
             return false;
         }
+        // console.log("1")
         return this.world.buildBlock(block, cursor.x, cursor.y);
     }
 
@@ -1725,11 +1742,29 @@ class Controller {
         this.active = true;
     }
 }
+class MobController extends Controller {
 
-class ZombieController extends Controller {
+    static PEACFUL = 0
+    static ATTACk_ON_ATTACK = 1
+    static ALWAYS_ATTACk = 2
 
-    constructor(entity){
+    constructor(entity, setup){
         super(entity);
+        if(!setup){
+            setup = {};
+        }
+
+        this.attackType = setup.attackType ?? MobController.PEACFUL;
+        this.activationRange = setup.activationRange ?? 10;
+        this.hitRange = setup.hitRange ?? 2;
+        this.damage = setup.damage ?? 2;
+        this.walkingSpeed = setup.walkingSpeed ?? 0.07;
+        this.attackSpeed = setup.attackSpeed ?? 0.13;
+
+        /**
+         * random
+         */
+        this.timeOffset = Math.random();
     }
 
     tick(elapsed, keys, game) {
@@ -1739,7 +1774,7 @@ class ZombieController extends Controller {
                 if(enemy.distance123 < 4) {
                     this.entity.dealHit(4, 2);
                 }
-                if(enemy.distance123 > 0.5){
+                if(enemy.distance123 > 0.5) {
                     if(enemy.pos.x < this.entity.pos.x) {
                         this.entity.walkLeft(true);
                     } else {
@@ -1843,9 +1878,8 @@ class World{
         this.loadedToX = 0;
         this.lastFromX = 0;
         this.lastTo = 0;
-        this.blockBuffer = 20;//buffer of chunks to left and right from the screen
-        this.chunkSize = 32;//width in blocks of a single chunk
-        this.maxLoadedColumns = 200; //older chunks will get deleted when this number gets exeeded
+        this.blockBuffer = 1;//buffer of chunks to left and right from the screen
+        this.maxLoadedColumns = 100; //older chunks will get deleted when this number gets exeeded
         this.lastLoadedChunk = undefined;
         this.idChunk = 0;
 
@@ -1856,22 +1890,42 @@ class World{
         this.entities.push(zombie);
     }
 
-    loadChunks(fromX, toX){
+    loadChunks(fromX, toX, fromY = this.height, toY = 0){
         this.lastFromX = fromX;
         this.lastToX = toX;
         fromX = Math.floor(fromX);
         toX = Math.ceil(toX);
-        fromX -= this.blockBuffer;
-        toX += this.blockBuffer;
-
-        for (let x = fromX; x <= toX; x++) {
-            this.loadChunk(x);
+        if(this.loadedChunks.includes(fromX) && this.loadedChunks.includes(toX)){
+            return;
         }
+        let fromX1 = fromX - this.blockBuffer;
+        let toX1 = toX + this.blockBuffer;
+
+        window.setTimeout(() => {
+            const updated = [];
+            for (let x = fromX1; x <= toX1; x++) {
+                if(this.loadChunk(x)){
+                    updated.push(x);
+                }
+            }
+            if(updated.length === 0) return;
+            let min = updated[0];
+            let max = updated[0];
+            for (const x of updated) {
+                min = Math.min(min, x);
+                max = Math.max(max, x);
+            }
+            min -= 3;
+            max += 3;
+            // console.log(updated);
+            // this.recalculateLightInRect(min, fromY, max - min, fromY - toY);
+            // this.recalculateLightInRect(min, this.height, max - min, this.height);
+        }, 0);
     }
 
     loadChunk(x){
         if(this.loadedChunks.includes(x)){
-            return;
+            return false;
         }
         console.log("loading chunk at x=" + x + ", total chunks: " + this.loadedChunks.length);
         this.chunks[World.xToIndex(x)] = [];
@@ -1880,6 +1934,7 @@ class World{
         }
         this.loadedChunks.push(x);
         this.cleanChunks();
+        return true;
     }
 
     cleanChunks(){
@@ -1917,16 +1972,32 @@ class World{
         return this.chunks[World.xToIndex(x)];
     }
 
+    columnFromChunksIgnoreUnloaded(x){
+        if(this.blockLoaded(x)){
+            return this.chunks[World.xToIndex(x)];
+        }
+    }
+
     getBlock(x, y){
+        return this.getBlockIgnoreUnloaded(x, y);
+        // y = Math.ceil(y);
+        // x = Math.floor(x);
+        // if(this.blockLoaded(x)){
+        //     return this.columnFromChunks(x)[y];
+        // } else{
+            // console.log("not loaded")
+            // this.loadChunks(x, x);
+            // return this.columnFromChunks(x)[y];
+        // }
+    }
+
+    getBlockIgnoreUnloaded(x, y){
         x = Math.floor(x);
         y = Math.ceil(y);
         if(this.blockLoaded(x)){
             return this.columnFromChunks(x)[y];
-        } else{
-            console.log("not loaded")
-            // this.loadChunks(x, x);
-            // return this.columnFromChunks(x)[y];
         }
+        return null;
     }
 
     /**
@@ -1960,7 +2031,7 @@ class World{
         return hitboxes;
     }
 
-    buildBlock(block, x, y, layer = 0) {
+    buildBlock(block, x, y) {
         if(x > this.height || y < 0) {
             return;
         }
@@ -1977,14 +2048,16 @@ class World{
                 }
             }
         }
-       
 
-        if(prevBlocks?.[layer]){
+        if(prevBlocks?.[block.layer]){
+            console.log(prevBlocks);
+            console.log("layer")
             return false;
         }
 
 
-        if(!this.canBlockBeplacedHere(x, y)){
+        if(!this.canBlockBeplacedHere(x, y, block.layer)){
+            console.log("no")
             return false;
         }
 
@@ -2001,18 +2074,36 @@ class World{
         if(column[y] === null){ // air
             column[y] = [];
         }
-        column[y][layer] = block;
+        column[y][block.layer] = block;
         this.blockChanged(x, y);
         return true;
     }
 
-    canBlockBeplacedHere(x, y){
-        const self = this.getBlock(x, y) ?? [];
-        const a = this.getBlock(x - 1, y) ?? [];
-        const b = this.getBlock(x, y- 1) ?? [];
-        const c = this.getBlock(x + 1, y) ?? [];
-        const d = this.getBlock(x, y + 1) ?? [];
-        return a[0]?.solid || b[0]?.solid || c[0]?.solid || d[0]?.solid || self[1]
+    canBlockBeplacedHere(x, y, layer){
+        const reverseLayer = layer === 0 ? 1 : 1;
+        const self = this.getBlock(x, y);
+        const a = this.getBlock(x - 1, y);
+        const b = this.getBlock(x, y- 1);
+        const c = this.getBlock(x + 1, y);
+        const d = this.getBlock(x, y + 1);
+        // console.log((a[layer]?.solid || b[layer]?.solid || c[layer]?.solid || d[layer]?.solid || self[reverseLayer])
+        // && !(a[layer]?.solid && b[layer]?.solid && c[layer]?.solid && d[layer]?.solid))
+        return (a || b || c || d || self?.[reverseLayer])
+        && !(a?.[layer]?.solid && b?.[layer]?.solid && c?.[layer]?.solid && d?.[layer]?.solid) && !self?.[0];
+    }
+
+    canBlockBeAccesed(x, y, layer){
+        const reverseLayer = layer === 0 ? 1 : 1;
+        const self = this.getBlock(x, y);
+        const a = this.getBlock(x - 1, y);
+        const b = this.getBlock(x, y- 1);
+        const c = this.getBlock(x + 1, y);
+        const d = this.getBlock(x, y + 1);
+        // console.log(((a[layer]?.solid || b[layer]?.solid || c[layer]?.solid || d[layer]?.solid) || self)
+        // && !(a[layer]?.solid && b[layer]?.solid && c[layer]?.solid && d[layer]?.solid))
+        
+        return ((a || b || c || d) || self)
+        // && !(a[layer]?.solid && b[layer]?.solid && c[layer]?.solid && d[layer]?.solid);
     }
 
     worldFunction(x, y){
@@ -2033,17 +2124,18 @@ class World{
             return [block];
         }
         const noise = Noise.noise(x / 6, y / 6) / 2 + 0.5;
-        const xNoise = Noise.noise(x * 0.03, 0);
+        const xNoise = Noise.noise(x * 0.01, 0);
+        const xNoiseSmall = Noise.noise(x * 0.05, 0);
 
-        const surfaceLevel = Math.round(50 + xNoise * 10);
+        const surfaceMin = 100;
+        const surfaceMax = 130;
+
+        const surfaceLevel = Math.round(surfaceMin + (xNoise + xNoiseSmall * 0.2) * (surfaceMax - surfaceMin));
+        const caveOnSurface = isCave(x, surfaceLevel);
         
-        const blocks = [];
-        
-        /**
-         * basic
-         */
+        let blocks = [];
+
         let blockOnSurface = false;
-        blocks[0] = new Stone(x, y, this);
         /**
          * flowers
          */
@@ -2059,8 +2151,7 @@ class World{
                 offset: 0.5
             }
         ];
-
-        if(y === surfaceLevel + 1){
+        if(y === surfaceLevel + 1 && !caveOnSurface){
             for (const flower of flowers) {
                 if((noise + flower.offset) % 1 < flower.probability){
                     blocks[0] = flower.getBlock();
@@ -2076,8 +2167,10 @@ class World{
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
-            ["Leaf", "Leaf", "Oaklog", "Leaf", null],
-            [null,    "Leaf", "Oaklog", "Leaf", null],
+            [null, "Leaf", "Oaklog", "Leaf", null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
         ],[
@@ -2086,35 +2179,60 @@ class World{
             ["Leaf", "Leaf", "Leaf", "Leaf", null],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             [null,   "Leaf", "Oaklog", "Leaf", null],
-            [null,    "Leaf", "Oaklog", "Leaf", null],
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
+        ],[
+            [null, null, "Leaf", null, null],
+            [null, "Leaf", "Leaf", "Leaf", null],
+            ["Leaf", "Leaf", "Leaf", "Leaf", null],
+            ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
+            [null,   "Leaf", "DarkOakLog", "Leaf", null],
+            [null,    null, "DarkOakLog", null, null],
+            [null,    null, "DarkOakLog", null, null],
+            [null,    null, "DarkOakLog", null, null],
+            [null,    null, "DarkOakLog", null, null],
+            [null,    null, "DarkOakLog", null, null],
         ]];
         /**
          * trees
          */
         
-        let treeX = x % 13;
+        const treeDistance = 6;
+        const treeDensity = 0.7;
+        let treeX = x % treeDistance;
         
         if(x < 0){
             treeX += 5;
         }
-        const treeXOrigin = x - treeX;
-        let treeIndex = Noise.noise(treeXOrigin, 0) > 0 ? 0 : 1;
-        const tree = trees[treeIndex];
-
-        const xTreeNoise = Noise.noise((treeXOrigin + 2) * 0.03, 0);
-        const treeYOrigin = Math.round(50 + xTreeNoise * 10);
-        const treeY = (y - treeYOrigin) * -1 + tree.length
-
-        if(tree?.[treeY]?.[treeX]) {
-            const treeBlockType = tree?.[treeY]?.[treeX];
-            if(treeBlockType){
-                blockOnSurface = true;
-            }
-            switch(treeBlockType){
-                case "Leaf": blocks[0] = new Leaf(x, y, this); break;
-                case "Oaklog": blocks[0] = new OakLog(x, y, this); break;
+        let treeXOrigin = x - treeX;
+        // x * 0.01, 0
+        const xTreeNoise = Noise.noise((treeXOrigin + 2) * 0.01)
+        const xTreeNoiseSmall = Noise.noise((treeXOrigin + 2) * 0.05)
+        const treeYOrigin = Math.round(surfaceMin + (xTreeNoise + xTreeNoiseSmall * 0.2) * (surfaceMax - surfaceMin));
+        if(!isCave(treeXOrigin + 2, treeYOrigin)){
+            if((Noise.noise(treeXOrigin * 1000) / 2 + 0.5) < treeDensity) {
+                let treeIndex =  Math.floor((Noise.noise(treeXOrigin, 0) / 2 + 0.5) * trees.length);
+                const tree = trees[treeIndex];
+    
+                const treeY = (y - treeYOrigin) * -1 + tree.length
+    
+                if(tree?.[treeY]?.[treeX]) {
+                    const treeBlockType = tree?.[treeY]?.[treeX];
+                    if(treeBlockType){
+                        blockOnSurface = true;
+                    }
+                    switch(treeBlockType){
+                        case "Leaf": blocks[0] = new Leaf(x, y, this); break;
+                        case "Oaklog": blocks[1] = new OakLog(x, y, this); break;
+                        case "DarkOakLog": blocks[1] = new DarkOakLog(x, y, this); break;
+                    }
+                }
             }
         }
 
@@ -2173,35 +2291,67 @@ class World{
             }
         }
 
-        if(y > surfaceLevel - 7 && !blockOnSurface){
+        if(y > surfaceLevel - 4 * (Noise.noise(x / 10) + 1) && !blockOnSurface){
             blocks[0] = new DirtBlock(x, y, this);
         }
-        if(y > surfaceLevel - 1 && !blockOnSurface){
+        if(y === surfaceLevel && !blockOnSurface){
             blocks[0] = new GrassBlock(x, y, this);
         }
 
+
+        function isCave(x ,y){
+            const caveCutoff = 0.5;
+            const canBeCave = Noise.noise(x / 50, y / 50) / 3 + 0.6 > caveCutoff;
+            if(!canBeCave) {
+                return false;
+            }
+
+            const strength = (surfaceLevel - y) / surfaceLevel + 0.4
+            let caveNoise1 = Noise.noise(x / 55, y / 30);
+            let caveNoise2 = Noise.noise(x / 65, (y + 300) / 35);
+            const margin = 0.25 * strength;
+            let cave = false;
+            cave = ((caveNoise1 > -margin && caveNoise1 < margin) || (caveNoise2 > -margin && caveNoise2 < margin));
+            cave &=  y <= surfaceLevel;
+            return cave;
+        }
+        const cave = isCave(x, y);
         /**
          * caves
          */
-        let caveNoise1 = Noise.noise(x / 50, y / 25) - 0.5;
-        let caveNoise2 = Noise.noise(x / 50, (y + 10) / 25) - 0.7;
-        const margin = 0.13
-        let cave = false;
-        cave = ((caveNoise1 > -margin && caveNoise1 < margin) || (caveNoise2 > -margin && caveNoise2 < margin));
-        cave &=  y < surfaceLevel;
+        
         /**
          * bedrock
          */
         if(y < 4){
             const influence = (4 - y) / 4;
-            if(noise < influence){
+            if(noise < influence && !blockOnSurface){
                 blocks[0] = new Bedrock(x, y, this);
             }
         } else if(cave){
-            return null;
+            blocks = [];
         }
 
-        blocks[0].placed = true;
+        /**
+         * filling
+         */
+        if(blocks.length === 0 && !cave){
+            blocks[0] = new Stone(x, y, this);
+        }
+
+        // if(!blocks[1]){
+            if(y < surfaceLevel){
+                blocks[1] = new CaveBackground(x, y, this);
+            }
+            // console.log(blocks);
+        // }
+
+        for (const block of blocks) {
+            if(block){
+                block.light = Math.max(0.05, Math.min(1, (surfaceLevel - y) / -5 + 1));
+                block.placed = true;
+            }
+        }
         return blocks;
     }
 
@@ -2256,6 +2406,7 @@ class World{
             for (const blocks of column) {
                 if(!blocks) continue;
                 for (const block of blocks) {
+                    if(!block) continue;
                     block.tick(elapsed);
                 }
             }
@@ -2282,17 +2433,20 @@ class World{
         /**
          * blocks
          */
-        this.loadChunks(camera.mostLeftBlock, camera.mostRightBlock);
+        this.loadChunks(camera.mostLeftBlock, camera.mostRightBlock, camera.mostTopBlock, camera.mostBottomBlock);
         for (let x = camera.mostLeftBlock; x < camera.mostRightBlock; x++) {
-            const column = this.columnFromChunks(x);
+            const column = this.columnFromChunksIgnoreUnloaded(x);
+            if(!column) continue;
             // console.log(column)
             for (let y = Math.max(0, camera.mostBottomBlock); y < Math.min(this.height, camera.mostTopBlock); y++) {
-                if(column[y]){//skip air
-                    for (const block of column[y]) {
-                        // console.log("drawing")
-                        block.draw(drawer, camera);
-                    }
+
+                if(!column?.[y]) continue;
+                const blocks = column[y];
+
+                if(!blocks?.[0]){
+                    blocks?.[1]?.draw(drawer, camera);
                 }
+                blocks?.[0]?.draw(drawer, camera);
             }
         }
         /**
@@ -2307,10 +2461,43 @@ class World{
         this.entities.push(entity);
     }
 
+    recalculateLightInRect(startX, startY, width, height){
+        console.log("width: " + width);
+        console.log("height: " + height);
+        console.log("recalculating: " + width * height + " blocks");
+        for (let x = startX; x <= startX + width; x++) {
+            for (let y = startY; y >= startX - height; y--) {
+                const blocks = this.getBlock(x, y);
+                if(!blocks) continue;
+                const light = this.getLightAt(x, y);
+                for (const block of blocks) {
+                    if(!block) continue;
+                    block.light = light;
+                }
+            }
+        }
+    }
+
     destroyBlock(block, layer = 0){
+        block.break();
         const column = this.columnFromChunks(block.pos.x);
-        column[block.pos.y].splice(layer, 1);
-        // column[block.pos.y][layer] = undefined;
+        if(column[block.pos.y]?.[layer]){
+            column[block.pos.y] [layer]= null;
+        }
+        if(column[block.pos.y]?.length === 0){
+            column[block.pos.y] = null;
+        }
+        const blockAbove = column[block.pos.y + 1];
+        // console.log(blockAbove)
+        if(blockAbove && block.solid) {
+            let i = 0;
+            for (const block of blockAbove) {
+                if(block?.needsSolidBlockBelow) {
+                    this.destroyBlock(block, i);
+                }
+                i++;
+            }
+        }
         this.blockChanged(block.pos.x, block.pos.y);
     }
 
@@ -2321,7 +2508,9 @@ class World{
         if(this.changedBlocks[World.xToIndex(x)] === undefined){
             this.changedBlocks[World.xToIndex(x)] = [];
         }
-        this.changedBlocks[World.xToIndex(x)][y] = this.getBlock(x, y);
+        const blocks = this.getBlock(x, y);
+        this.changedBlocks[World.xToIndex(x)][y] = blocks;
+        this.recalculateLightInRect(x - 5, y + 5, 10, 10);
     }
 
     mousedown(e){
@@ -2331,11 +2520,46 @@ class World{
                 const blocks = this.getBlock(cursor.x, cursor.y);
                 if(blocks){
                     for (const block of blocks) {
-                        block.onrightclick(this.game.activePlayer);
+                    if(!block) continue;
+                    block.onrightclick(this.game.activePlayer);
                     }
                 }
             }
         }
+    }
+
+    getLightAt(x, y) {
+        const directions = [
+            // new Point(0, 1),
+            new Point(1, 0),
+            new Point(-1, 0),
+            new Point(0, -1),
+            new Point(0, 1),
+
+            new Point(1, 1),
+            new Point(-1, 1),
+            new Point(1, -1),
+            new Point(-1, -1),
+        ]
+        const origin = new Point(x, y);
+        const maxLevel = 3;
+        const minLight = 0.05;
+        let max = 0;
+        for (let dir = 0; dir < directions.length; dir++) {
+            const test = new Point(x, y);
+            for (let i = 0; i < maxLevel; i++) {
+                test.add(directions[dir]);
+                const blocks = this.getBlockIgnoreUnloaded(test.x, test.y);
+                if(!blocks){
+                    // console.log()
+                    const distance = origin.distanceFrom(test);
+                    max = Math.max(max, (maxLevel - (distance * 0.8 - 1)) / maxLevel);
+                    if(max >= 1) return Math.max(max, minLight);
+                    // max = Math.max(max, (maxLevel - i) / maxLevel)
+                }
+            }
+        }
+        return Math.max(max, minLight);
     }
 }
 

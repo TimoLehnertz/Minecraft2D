@@ -174,6 +174,7 @@ const textureAtlasMap = {
     },
     stone: { x: 37, y: 3, width: 1, height: 1},
     diamondAxe: { x: 43, y: 14, width: 1, height: 1},
+    caveBackground: { x: 32, y: 21, width: 1, height: 1},
     /**
      * wood
      */
@@ -288,12 +289,12 @@ class Item extends Panel {
         this.placed = false;
     }
 
-    draw(drawer, x, y){
+    draw(drawer, x, y, filter = ""){
         if(!this.visible){
             return;
         }
 
-        drawer.draw(this.texture, x + this.x + this.padding, y + this.y + this.padding, this.width - this.padding * 2, this.height - this.padding * 2, this.textureMeta.x * 16, this.textureMeta.y * 16, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth);
+        drawer.draw(this.texture, x + this.x + this.padding, y + this.y + this.padding, this.width - this.padding * 2, this.height - this.padding * 2, this.textureMeta.x * 16, this.textureMeta.y * 16, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, filter);
         if(this.stack > 1){
             let add = 0;
             if(this.stack < 10){
@@ -407,8 +408,12 @@ class Item extends Panel {
 
 class Block extends Item {
 
+    // static BLOCK_COUNT = 0;
+
     constructor(name, x, y, texture, textureMeta, type, world, setup, itemSetup){
         super(name, texture, textureMeta, type, itemSetup);
+        // console.log("constructor of block: " + Block.BLOCK_COUNT);
+        // Block.BLOCK_COUNT++;
         this.itemSetup = itemSetup;
         if(setup === undefined){
             setup = {};
@@ -432,15 +437,17 @@ class Block extends Item {
         this.layer = setup.layer ?? 0;
         this.fuel = setup.fuel ?? itemSetup?.fuel ?? 0
         this.getFurnanceResult = setup.getFurnanceResult ?? itemSetup?.getFurnanceResult ?? (() => null);
+        this.needsSolidBlockBelow = setup.needsSolidBlockBelow ?? false;
         
         this.hitbox = setup.hitbox ?? new Hitbox(0, 0, 1, 1);
         this.hitbox.gPosRef = this.pos;
         
-        this.border = Math.random() > 0.99;
+        // this.border = Math.random() > 0.99;
+        this.border = false;
         this.showHitbox = false;
         this.placed = false;
         this.broken = 0;
-
+        this.light = 1;
     }
 
     draw(drawer, camera, y) {
@@ -450,11 +457,12 @@ class Block extends Item {
         if(!this.visible) {
             return;
         }
+
         const texName = texturepack;
         const screen = camera.worldToScreen(this.pos, drawer.screen);
 
         drawer.draw(texName, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
-            this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth);
+            this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, "", this.light);
 
         if(this.border){
             drawer.draw(texName, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
@@ -516,14 +524,18 @@ class Block extends Item {
     }
 
     clone(){
-        const cpy = new Block(this.name, this.x, this.y, this.tetxure, this.textureMeta, this.type, this.maxStack, this.world, this.setup, this.itemSetup);
-        cpy.stack = this.stack;
-        cpy.width = this.width;
-        cpy.height = this.height;
-        cpy.solid = this.solid;
-        cpy.onrightclick = this.onrightclick;
-        cpy.fuel = this.fuel;
-        cpy.getDrop = this.getDrop;
+        // const cpy = new Block(this.name, this.x, this.y, this.tetxure, this.textureMeta, this.type, this.maxStack, this.world, this.setup, this.itemSetup);
+        // cpy.stack = this.stack;
+        // cpy.width = this.width;
+        // cpy.height = this.height;
+        // cpy.solid = this.solid;
+        // cpy.onrightclick = this.onrightclick;
+        // cpy.fuel = this.fuel;
+        // cpy.getDrop = this.getDrop;
+        // return cpy;
+        const cpy = new this.constructor();
+        // console.log(cpy);
+        // const cpy = 
         return cpy;
     }
 }
@@ -786,6 +798,16 @@ class Cobblestone extends Block {
     }
 }
 
+class CaveBackground extends Block {
+    constructor(x, y, world) {
+        super("CaveBackground", x, y, texturepack, textureAtlasMap.caveBackground, Item.TYPE_PICKAXE, world, {
+            resistance: 40000000,
+            layer: 1,
+            solid: false
+        });
+    }
+}
+
 class Bedrock extends Block {
     constructor(x, y, world) {
         super("Bedrock", x, y, texturepack, textureAtlasMap.bedrock, Item.TYPE_HOE, world, {
@@ -933,8 +955,8 @@ class OakLog extends Block {
     constructor(x, y, world) {
         super("OakLog", x, y, texturepack, textureAtlasMap.oaklog, Item.TYPE_AXE, world, {
             resistance: 100,
-            solid: false,
             fuel: 1.5,
+            layer: 1,
             getFurnanceResult: () => new Charcoal()
         });
     }
@@ -944,27 +966,28 @@ class OakPlank extends Block {
     constructor(x, y, world) {
         super("OakPlank", x, y, texturepack, textureAtlasMap.oakPlank, Item.TYPE_AXE, world, {
             resistance: 100,
-            solid: false,
-            fuel: 1.5
+            layer: 1,
+            fuel: 1.5,
         });
     }
 }
 
-class DarkoakLog extends Block {
+class DarkOakLog extends Block {
     constructor(x, y, world) {
         super("OakLog", x, y, texturepack, textureAtlasMap.darkOakLog, Item.TYPE_AXE, world, {
             resistance: 100,
-            solid: false,
             fuel: 1.5,
+            layer: 1,
             getFurnanceResult: () => new Charcoal()
         });
     }
 }
 
-class DarkoakPlank extends Block {
+class DarkOakPlank extends Block {
     constructor(x, y, world) {
         super("DarkOakPlank", x, y, texturepack, textureAtlasMap.darkOakPlank, Item.TYPE_AXE, world, {
             resistance: 100,
+            layer: 1,
             layer: 1,
             fuel: 1.5
         });
@@ -987,6 +1010,7 @@ class FlowerPink extends Block {
         super("FlowerPink", x, y, texturepack, textureAtlasMap.flowerPink, Item.TYPE_NONE, world, {
             resistance: 1,
             solid: false,
+            needsSolidBlockBelow: true,
         });
     }
 }
@@ -996,6 +1020,7 @@ class FlowerRed extends Block {
         super("FlowerRed", x, y, texturepack, textureAtlasMap.flowerRed, Item.TYPE_NONE, world, {
             resistance: 1,
             solid: false,
+            needsSolidBlockBelow: true,
         });
     }
 }
