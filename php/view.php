@@ -3,7 +3,9 @@ include "../data/dbh.php";
 
 $ip = $_SERVER['REMOTE_ADDR'];
 echo $ip;
-dbExecute("USE minecraft; ");
+
+$mysqli->select_db("Minecraft");
+
 echo dbInsert("INSERT INTO views(ip, region) VALUES (?, ?);", $ip, ip_info($ip));
 
 // header("location: /index.php");
