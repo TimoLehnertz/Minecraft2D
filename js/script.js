@@ -18,7 +18,12 @@ const keymap = {
     hotbar7: ["Digit7"],
     hotbar8: ["Digit8"],
     hotbar9: ["Digit9"],
+    stats: ["KeyT"],
 };
+
+function toggleKeys(){
+    $(".controlls").toggleClass("minimized");
+}
 
 function keyPressed(name, keyStatus){
     let pressed = false;
@@ -83,30 +88,34 @@ class ItemFrame extends Panel {
         this.ontake = () => false;
         this.filterItems = (item) => true;
 
-        if(Math.random() < 0.1){
-            this.holdItem(new DiamondPickaxe());
-        }
-        if(Math.random() < 0.1){
-            this.holdItem(new DiamondAxe());
-        }
+        // if(Math.random() < 0.1){
+        //     this.holdItem(new DiamondPickaxe());
+        // }
+        // if(Math.random() < 0.1){
+        //     this.holdItem(new DiamondAxe());
+        // }
 
-        if(Math.random() > 0.9){
-            this.holdItem(new DiamondShovel());
-            // this.item.stack = 20
-        }
-        if(Math.random() < 0.1){
-            this.holdItem(new Cobblestone());
-            this.item.stack = 64;
-        }
-        if(Math.random() < 0.1){
-            const item = new OakLog();
-            item.stack = 20;
-            this.holdItem(item);
-        }
+        // if(Math.random() > 0.9){
+        //     this.holdItem(new DiamondShovel());
+        //     // this.item.stack = 20
+        // }
+        // if(Math.random() < 0.1){
+        //     this.holdItem(new Cobblestone());
+        //     this.item.stack = 64;
+        // }
+        // if(Math.random() < 0.1){
+        //     const item = new OakLog();
+        //     item.stack = 20;
+        //     this.holdItem(item);
+        // }
+        // if(Math.random() < 0.4){
+        //     const item = new Torch();
+        //     item.stack = 20;
+        //     this.holdItem(item);
+        // }
         if(Math.random() < 0.4){
-            const item = new Torch();
-            item.stack = 20;
-            this.holdItem(item);
+            // const item = new CraftingTable();
+            // this.holdItem(item);
         }
     }
 
@@ -679,7 +688,7 @@ class Inventory extends Panel {
        } else {
         this.open();
        }
-   }
+    }
 
     draw(drawer, elapsed){
         this.visible = this.opened;
@@ -689,7 +698,7 @@ class Inventory extends Panel {
                 this.grabbedItem.x = this.mouse.innerX - 30;
                 this.grabbedItem.y = this.mouse.innerY - 30;
             }
-        } else {
+        } else if(this.entity.alive){
             const screen = drawer.screen;
             this.hotbar.draw(drawer, screen.width / 2 - this.hotbar.width / 2, (screen.height - this.hotbar.height - 20) - this.hotbar.y);
         }
@@ -765,6 +774,16 @@ class Inventory extends Panel {
         return item.stack > 0;
     }
 
+    canTakeItem(item) {
+        for (const itemRow of this.itemRows) {
+            for (const itemFrame of itemRow.children) {
+                if(itemFrame.canTakeItem(item)){
+                    return true;
+                }
+            }
+        }
+    }
+
     takeItem(item){
         for (const itemFrame of this.hotbar.children) {
             if(itemFrame.canTakeItemPartly(item)){
@@ -798,6 +817,7 @@ class Inventory extends Panel {
                 }
             }
         }
+        return item;
     }
 
     keydown(e, keys){
@@ -844,6 +864,7 @@ class Inventory extends Panel {
     }
 
     clear(parent = this, i = 0) {
+        if(!parent) return;
         for (const child of parent.children) {
             if(child instanceof ItemFrame){
                 child.holdItem(null);
@@ -881,7 +902,12 @@ class Entity extends Point {
         this.attackCooldown = 450;
         this.walkingSpeed = 0.2;
         this.light = 1;
-        this.lastLightUpdate = 0;
+        this.canClimb = false;
+        this.dayLight = 0;
+
+        this.alive = true;
+        this.burning = 0;
+        this.burnsOnSunlight = false;
 
         if(hasInventory){
             this.inventory = new Inventory(this);
@@ -905,6 +931,9 @@ class Entity extends Point {
         if(autojumb) {
             this.autojumb();
         }
+        if(this.canClimb) {
+            this.climb();
+        }
     }
 
     walkLeft(autojumb = false) {
@@ -912,14 +941,28 @@ class Entity extends Point {
         if(autojumb) {
             this.autojumb();
         }
+        if(this.canClimb) {
+            this.climb();
+        }
+    }
+
+    climb() {
+        const xOffset = this.vel.x > 0 ? this.width + 0.2 : -.2;
+        const block = this.game.world.getBlock(this.pos.x + xOffset, this.pos.y - this.height);
+        if(block && block?.[0]?.solid) {
+            // console.log("climbing")
+            this.grounded = true;
+            // this.pos.y += 0.1;
+            this.vel.y = 6
+        }
     }
 
     autojumb (){
-        if(!this.isGrounded){
+        if(!this.isGrounded || this.canClimb){
             return;
         }
         const right = this.vel.x > 0;
-        const x = this.hitbox.center.x + (right ? 1 : -1);
+        const x = this.hitbox.center.x + (right ? this.hitbox.width  : -this.hitbox.width);
         const y = this.pos.y - this.height + 0.5;
         const block1 = this.game.world.getBlock(x, y);
         const block2 = this.game.world.getBlock(x, y + 1);
@@ -935,9 +978,20 @@ class Entity extends Point {
         return this.life > 0;
     }
 
-    tick(elapsed, world, keys){
-        
+    regen() {
         this.life = Math.min(this.life + this.regenRate, this.maxLife);
+    }
+
+    entityCollided(entity) {
+        if(entity.burning > 0) {
+            this.burning = 1;
+        }
+    }
+
+    tick(elapsed, world, keys){
+        if(this.life < this.maxLife) {
+            this.regen();
+        }
 
         if(this.controller){
             this.controller.tick(elapsed, keys, world.game);
@@ -960,11 +1014,35 @@ class Entity extends Point {
         /**
          * light
          */
-        // if(this.game.time - this.lastLightUpdate > ){
-            const center = this.hitbox.center;
-            this.light = Math.max(this.game.world.getSourceLight(center.x, center.y) + this.game.world.sunLightAt(this.game.world.surfaceLevelAt(center.x), center.y), 0);
-            // this.lastLightUpdate = this.game.time;
-        // }
+        const center = this.hitbox.center;
+        this.dayLight = this.game.world.sunLightAt(this.game.world.surfaceLevelAt(center.x), center.y);
+        this.light = Math.max(this.game.world.getSourceLight(center.x, center.y) + this.dayLight, 0);
+        if(this.dayLight === 1 && this.burnsOnSunlight) {
+            this.burning = 3;
+        }
+
+        /**
+         * burning
+         */
+        if(this.burning > 0) {
+            this.life -= 0.05;
+            this.burning = Math.max(0, this.burning -= 0.04);
+        }
+        /**
+         * die
+         */
+        if(this.life <= 0 && this.maxLife > 0) {
+            this.die();
+        }
+    }
+
+    fallDamage(velY) {
+        const minVel = 20;
+        if(velY < -minVel && this.firstFall) {
+            const vel = -velY - minVel;
+            this.life -= Math.pow(vel / 3.5, 1.2);
+        }
+        this.firstFall = true;
     }
 
     move(world, elapsed){
@@ -1007,6 +1085,10 @@ class Entity extends Point {
              */
             if(collision.vertical){
                 this.isGrounded = true;
+                /**
+                 * fall damage
+                 */
+                this.fallDamage(this.vel.y);
                 this.vel.y = 0;
             } else {
                 if(hitbox.pos.y > this.pos.y + 2 || !this.isGrounded){
@@ -1072,11 +1154,20 @@ class Entity extends Point {
             this.handItem.height = point.size * 0.65;
             this.handItem.draw(drawer, point.pos.x, point.pos.y, filter);
         }
+
+        if(this.burning > 0) {
+            let flame = textureAtlasMap.fire1;
+            if(this.game.time % 250 < 125) {
+                flame = textureAtlasMap.fire2;
+            }
+            drawer.draw("atlas1", screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
+                flame.x * tileWidth, flame.y * tileWidth, flame.width * tileWidth, flame.height * tileWidth);
+        }
     }
 
     holdItem(item) {
         this.handItem = item;
-        if(!item){
+        if(!item) {
             return;
         }
         // this.handItem = item;
@@ -1110,10 +1201,13 @@ class Entity extends Point {
 
     die() {
         console.log("I died :/");
+        this.alive = false;
         this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
-        const drops = this.getDrops();
+        let drops = this.getDrops();
         if(drops) {
-            console.log(drops)
+            if(!Array.isArray(drops)) {
+                drops = [drops];
+            }
             for (const drop of drops) {
                 const droppedItem = new DroppedItem(drop, this.hitbox.center.x, this.hitbox.center.y, this.game, 1300);
                 droppedItem.vel.x = Math.random() * 15 - 5;
@@ -1125,16 +1219,142 @@ class Entity extends Point {
     }
 }
 
-class Zombie extends Entity {
+class Mob extends Entity {
+
+    constructor(game, x, y, width, height, hitbox ,texture, textureMeta, setup){
+        super(x, y, width, height, texture, textureMeta, hitbox, game, 20);
+
+        if(!setup) {
+            setup = {};
+        }
+
+        this.setup = setup;
+        this.walkingSpeed = setup.walkingSpeed ??0.1;
+        this.burnsOnSunlight = setup.burnsOnSunlight ?? false;
+        this.canClimb = setup.canClimb ?? false;
+        this.xp = setup.xp ?? 5;
+        this.gravity = setup.gravity ?? 15;
+        this.life = setup.life ?? 20;
+
+        this.behavior = setup.behavior ?? {};
+
+        this.controller = new MobController(this, this.behavior);
+    }
+}
+
+class Zombie extends Mob {
     
-    constructor(game, x = 0, y = 100){
-        super(x, y, 0.9, 1.8, "zombie", textureAtlasMap.zombie, new Hitbox(0.1, 0, 0.8, 1.8), game, 20, true, false);
-        this.controller = new MobController(this);
-        // this.vel.y = -1;
+    constructor(game, x, y) {
+        super(game, x, y, 0.9, 1.8, new Hitbox(0.1, 0, 0.8, 1.8), "zombie", textureAtlasMap.zombie, {
+            walkingSpeed: 0.1,
+            burnsOnSunlight: true,
+            behavior: {
+                attackType: MobController.ALWAYS_ATTACk,
+                activationRange: 16,
+            }
+        });
     }
 
     getDrops() {
-        return [new Iron()];
+        if(Math.random() < 0.05) {
+            return [new Iron()];
+        } else {
+            const drop = new RottenFlesh();
+            drop.stack = Math.floor(Math.random() * 2 + 1)
+            return drop;
+        }
+    }
+}
+
+class Spider extends Mob {
+    
+    constructor(game, x, y) {
+        super(game, x, y, 1.9, 0.8, new Hitbox(0.1, 0, 1.9, 0.8), texturepack, textureAtlasMap.spider, {
+            walkingSpeed: 0.1,
+            burnsOnSunlight: false,
+            canClimb: true,
+            behavior: {
+                attackType: MobController.AGGRESSIVE_ALWAYS_ATTACK_EXEPT_DAYLIGHT,
+                activationRange: 16,
+            }
+        });
+    }
+
+    getDrops() {
+        if(Math.random() < 0.4) {
+            return [new SpiderEye()];
+        } else {
+            const drop = new String();
+            drop.stack = Math.floor(Math.random() * 2 + 1)
+            return drop;
+        }
+    }
+}
+
+class Chicken extends Mob {
+    
+    constructor(game, x, y) {
+        super(game, x, y, 0.9, 0.9, new Hitbox(0, 0, 0.9, 0.9), texturepack, textureAtlasMap.chicken, {
+            walkingSpeed: 0.07,
+            life: 6,
+            gravity: 3,
+            behavior: {
+                attackType: MobController.PEACFUL,
+            }
+        });
+    }
+
+    getDrops() {
+        if(Math.random() < 0.3) {
+            return new Feather();
+        } else {
+            const drop = new RawChicken();
+            drop.stack = Math.floor(Math.random() * 2 + 1)
+            return drop;
+        }
+    }
+}
+
+class Cow extends Mob {
+    
+    constructor(game, x, y) {
+        super(game, x, y, 1.4, 1.4, new Hitbox(0, 0, 1.4, 1.2), texturepack, textureAtlasMap.cow, {
+            walkingSpeed: 0.07,
+            life: 10,
+            behavior: {
+                attackType: MobController.PEACFUL,
+            }
+        });
+    }
+
+    getDrops() {
+        if(Math.random() < 0.4) {
+            return new Leather();
+        } else {
+            const drop = new RawBeef();
+            drop.stack = Math.floor(Math.random() * 2 + 1)
+            return drop;
+        }
+    }
+}
+
+
+class Pig extends Mob {
+    
+    constructor(game, x, y) {
+        super(game, x, y, 1.4, 1.4, new Hitbox(0, 0, 1.4, 1.2), texturepack, textureAtlasMap.pig, {
+            walkingSpeed: 0.07,
+            life: 10,
+            behavior: {
+                attackType: MobController.PEACFUL,
+            }
+        });
+    }
+
+    getDrops() {
+        const drop = new Pork();
+        drop.stack = Math.floor(Math.random() * 2 + 1)
+        return drop;
     }
 }
 
@@ -1209,7 +1429,7 @@ class Hitbox {
      * improvement: check for collision in only one dimension: first check x than y
      */
     willHit(box, vel) {
-        const collisionMargin = 0.015;
+        const collisionMargin = 0.02;
         /**
          * figuring out when it will hit
          */
@@ -1308,17 +1528,44 @@ class Hitbox {
 
 class Player extends Entity {
 
-    constructor(game, x = -1, y = 120, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
+    constructor(game, x = 5, y = 120, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
         super(x, y, 0.9, 1.8, texture, textureAtlasMap.steve, hitbox, game, 20, true, true);
         this.vel.y = -1000;
         this.controller = new KeyboardController(this);
         this.leftMouseDown = false;
         this.rightMouseDown = false;
         this.isPlayer = true;
+        this.xp = 0;
+        
+        /**
+         * hunger
+         */
+        this.maxHunger = 20;
+        this.hunger = 20;
+        // costs
+        this.buildHungerCost = 0.01;
+        this.tickHungerCost = 0.00003;
+        this.regenHungerCost = 0.003;
+        
+        this.foodProgress = 0;
     }
 
+    regen() {
+        if(this.hunger === 0) {
+            return;
+        }
+        this.hunger -= this.regenHungerCost;
+        super.regen();
+    }
+    
     die() {
         super.die();
+        for (let i = 0; i < this.xp; i++) {
+            if(Math.random() <0.4) {
+                const xpPoint = new XPPoint(this.x, this.y, this.game, 1000);
+                this.game.world.spawnEntity(xpPoint);
+            }
+        }
         window.setTimeout(() => this.game.respawnPlayer(), 2000);
     }
 
@@ -1386,6 +1633,21 @@ class Player extends Entity {
         }
     }
 
+    eat() {
+        if(!this.handItem || this.handItem.food === 0) {
+            this.foodProgress = 0;
+            return;
+        }
+
+        this.foodProgress += 0.08;
+        if(this.foodProgress >= 1) {
+            this.foodProgress = 0;
+            this.hunger = Math.min(this.maxHunger, this.hunger + this.handItem.food);
+            this.inventory.hotbar.children[this.inventory.activeIndex].decrease();
+            this.inventory.setActiveHotbar(this.inventory.activeIndex);
+        }
+    }
+
     mouseup(e) {
         if(e.originalEvent.button === Panel.LEFT_CLICK){
             this.leftMouseDown = false;
@@ -1397,6 +1659,14 @@ class Player extends Entity {
 
     tick(elapsed, world, keys, time){
         this.playerControlls(elapsed, time, keys);
+        this.hunger -= this.tickHungerCost;
+        this.hunger = Math.max(0, this.hunger);
+        if(this.hunger === 0) {
+            this.life = Math.max(this.life - 0.003, 0.9);
+        }
+        if(this.rightMouseDown) {
+            this.eat();
+        }
         super.tick(elapsed, world, keys);//should be last as it checks collisions and controller can move unchecked
     }
 
@@ -1418,11 +1688,11 @@ class Player extends Entity {
         if(this.rightMouseDown){
             this.buildBlock();
         }
-        
     }
 
     buildBlock(){
         if(this.game.buildBlock(this.handItem)){
+            this.hunger -= this.buildHungerCost;
             this.handItem.stack--;
             if(this.handItem.stack === 0){
                 this.inventory.destroyItem(this.handItem);
@@ -1432,27 +1702,198 @@ class Player extends Entity {
     }
 
     entityCollided(collider){
-        if(collider.isCollectible && collider.canITakeYou(this)){
-            this.inventory.takeItem(collider.item);
-            collider.die();
+        if(collider instanceof DroppedItem){
+            if(!this.canTakeItem(collider.item)) return;
+            if(collider.isCollectible && collider.canITakeYou()){
+                const newItem = this.inventory.takeItem(collider.item);
+                if(!newItem) {
+                    collider.die();
+                }  else {
+                    collider.item = newItem;
+                }
+            }
         }
+        if(collider instanceof XPPoint) {
+            if(collider.canITakeYou()) {
+                this.xp++;
+                collider.die();
+            }
+        }
+        super.entityCollided(collider);
+    }
+
+    canTakeItem(item){
+        return this.inventory?.canTakeItem(item);
+    }
+}
+
+class Heart extends Panel {
+
+    constructor(x, width, height, hp) {
+        super(x, 0, width, height, "#0000");
+        this.hp = hp;
+        this.state = 2;
+    }
+
+    draw(drawer, x, y) {
+        const padding = 2;
+
+        let textureMeta = textureAtlasMap.emptyHeart;
+        if(this.state === 1){
+            textureMeta = textureAtlasMap.halfHeart;
+        } else if(this.state === 2) {
+            textureMeta = textureAtlasMap.heart;
+        }
+        // if(this.state > 0) {
+            drawer.draw(texturepack, this.x + x + padding, this.y + y + padding, this.width - padding * 2, this.width - padding * 2, textureMeta.x * tileWidth, textureMeta.y * tileWidth, textureMeta.width * tileWidth, textureMeta.height * tileWidth);
+        // }
+    }
+}
+
+class HungerPanel extends Panel {
+
+    constructor(x, width, height, hp) {
+        super(x, 0, width, height, "#0000");
+        this.hp = hp;
+        this.state = 2;
+    }
+
+    draw(drawer, x, y) {
+        const padding = 2;
+
+        let textureMeta = textureAtlasMap.emptyHunger;
+        if(this.state === 1){
+            textureMeta = textureAtlasMap.halfHunger;
+        } else if(this.state === 2) {
+            textureMeta = textureAtlasMap.fullHunger;
+        }
+        // if(this.state > 0) {
+            drawer.draw(texturepack, this.x + x + padding, this.y + y + padding, this.width - padding * 2, this.width - padding * 2, textureMeta.x * tileWidth, textureMeta.y * tileWidth, textureMeta.width * tileWidth, textureMeta.height * tileWidth);
+        // }
+    }
+}
+
+class HeartRow extends Panel {
+    
+    constructor() {
+        super(0, 0, 260, 50, "#0000");
+        this.heartCount = 10;
+        this.border = false;
+
+        this.hearts = [];
+        for (let heart = 0; heart < this.heartCount; heart++) {
+            const heartPanel = new Heart((this.width / this.heartCount) * heart, this.width / this.heartCount, this.height);
+            this.hearts.push(heartPanel);
+            this.add(heartPanel);
+        }
+    }
+
+    set hp (hp){
+        let x = 0;
+        for (let heart = 0; heart < this.heartCount; heart++) {
+            const hpThreshold = heart / this.heartCount;
+            const nextHpThreshold = (heart + 0.5) / this.heartCount;
+            if(hp <= hpThreshold) {
+                this.hearts[heart].state = 0;
+            } else if(hp >= hpThreshold && hp <= nextHpThreshold) {
+                this.hearts[heart].state = 1;
+                x += 0.5;
+            } else {
+                x += 1;
+                this.hearts[heart].state = 2;
+            }
+        }
+        // console.log(x);
+    }
+}
+
+class HungerRow extends Panel {
+    
+    constructor() {
+        super(0, 0, 260, 50, "#0000");
+        this.heartCount = 10;
+        this.border = false;
+
+        this.hearts = [];
+        for (let heart = 0; heart < this.heartCount; heart++) {
+            const heartPanel = new HungerPanel(this.width - (this.width / this.heartCount) * (heart + 1), this.width / this.heartCount, this.height);
+            this.hearts.push(heartPanel);
+            this.add(heartPanel);
+        }
+    }
+
+    set hp (hp){
+        let x = 0;
+        for (let heart = 0; heart < this.heartCount; heart++) {
+            const hpThreshold = heart / this.heartCount;
+            const nextHpThreshold = (heart + 0.5) / this.heartCount;
+            if(hp <= hpThreshold) {
+                this.hearts[heart].state = 0;
+            } else if(hp >= hpThreshold && hp <= nextHpThreshold) {
+                this.hearts[heart].state = 1;
+                x += 0.5;
+            } else {
+                x += 1;
+                this.hearts[heart].state = 2;
+            }
+        }
+        // console.log(x);
     }
 }
 
 class PlayerInfo extends Panel {
 
     constructor(player) {
-        super()
+        super(0, 0, 570, 50, "#0000");
+        this.player = player;
+        this.border = false;
+
+        this.heartRow = new HeartRow();
+        this.hungerRow = new HungerRow();
+        this.hungerRow.x = 310;
+
+        this.xpBar = new Panel(0, 30, 0, 8, "#2ebf3c");
+
+        this.add(this.xpBar);
+        this.add(this.heartRow);
+        this.add(this.hungerRow);
+    }
+
+    draw(drawer, x = 0, y = 0) {
+        /**
+         * init
+         */
+        if(!this.player) return;
+        const screen = drawer.screen;
+        this.y = screen.height - 120;
+        this.x = screen.width / 2 - this.width / 2;
+
+        const xpStep = 10;
+        this.xpBar.width = ((this.player.xp % xpStep) / xpStep) * this.width;
+        this.xpBar.border = this.xpBar.width > 0;
+        const level = Math.floor(this.player.xp / xpStep);
+        if(level > 0) {
+            // console.log("level")
+            drawer.text(this.globalX + this.width / 2 - 10, this.globalY + 20, level, "22px Arial", "#7Fdf8c");
+        }
+        /**
+         * lives
+         */
+        this.heartRow.hp = this.player.life / this.player.maxLife;
+        this.hungerRow.hp = this.player.hunger / this.player.maxHunger;
+        // console.log(this.player.life / this.player.maxLife)
+        super.draw(drawer, x, y);
     }
 }
 
 class Game {
 
-    constructor(drawer, camera = new Camera()){
+    constructor(drawer, camera = new Camera()) {
         this.world = new World(this);
         this.drawer = drawer;
         this.camera = camera;
         this.lastUpdate = 0;
+        this.playerInfo = new PlayerInfo();
         this.keyStatus = {};
         this.mousePressed = false;
         this.debug = true;
@@ -1472,11 +1913,11 @@ class Game {
             this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer.inventory), 1);
             this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer), 1);
         }
-
+        this.playerInfo.player = player;
         this.activePlayer = player;
-        this.camera.target = this.activePlayer;
-        this.inputEventListener.push(this.activePlayer);
-        this.inputEventListener.push(this.activePlayer.inventory);
+        this.camera.target = player;
+        this.inputEventListener.push(player);
+        this.inputEventListener.push(player.inventory);
         this.world.spawnEntity(player);
     }
 
@@ -1522,6 +1963,9 @@ class Game {
         }
         if(keyPressed("zoomIn", this.keyStatus)){
             this.camera.scale -= 2;
+        }
+        if(keyPressed("stats", this.keyStatus)){
+            this.debug = !this.debug;
         }
         this.camera.scale = Math.max(this.camera.minScale, Math.min(this.camera.scale, this.camera.maxScale));
     }
@@ -1612,12 +2056,23 @@ class Game {
         /**
          * lives
          */
+        if(this.playerInfo) {
+            this.playerInfo.draw(this.drawer);
+        }
 
     }
 
     drawDebug(elapsed){
         const fps = Math.round(1000 / elapsed * 1);
         this.fps.push(fps);
+        let avgFps = 0;
+        if(this.fps.length > 0) {
+            for (const fps of this.fps) {
+                avgFps += fps;
+            }
+            avgFps = avgFps / this.fps.length;
+        }
+       
         if(this.fps.length > 500) {
             this.fps.splice(0, 1);
         }
@@ -1630,7 +2085,7 @@ class Game {
             if(hoverBlocks){
                 let blocks = "";
                 for (const block of hoverBlocks) {
-                    if(!block) continue;
+                    if(!block) continue; 
                     blocks += ", " + block.name
                 }
                 if(hoverBlocks[0]){
@@ -1638,7 +2093,7 @@ class Game {
                 }
             }
         }
-        const fpsStartX = 200;
+        const fpsStartX = 400;
         const fpsStartY = 100;
         for (let i = 0; i < this.fps.length; i++) {
             const fps = this.fps[i];
@@ -1648,7 +2103,9 @@ class Game {
             }
             this.drawer.fillRect(fpsStartX + i, fpsStartY - fps, 1, fps, color);
         }
-        this.drawer.text(10, 210, "player coordinates: (" + Math.round(this.activePlayer.pos.x) + "|" + Math.round(this.activePlayer.pos.y) + ")");
+        this.drawer.text(10, 135, "player coordinates: (" + Math.round(this.activePlayer.pos.x) + "|" + Math.round(this.activePlayer.pos.y) + ")");
+        this.drawer.text(10, 155, "player speed: (" + Math.round(this.activePlayer.vel.x) + "|" + Math.round(this.activePlayer.vel.y) + ")");
+        this.drawer.text(10, 185, "Average fps: " + Math.round(avgFps));
     }
 
     get cursor(){
@@ -1692,11 +2149,11 @@ class Camera extends Point {
      * @param {*} y 
      * @param {*} scale how many blocks will be in view
      */
-    constructor(x = 0, y = 70, scale = 30, target){
+    constructor(x = 0, y = 70, scale = 20, target){
         super(x, y);
         this.scale = scale;
         this.minScale = 7;
-        this.maxScale = 50;
+        this.maxScale = 25;
         this.vel = new Point();
         this.target = target;
     }
@@ -1762,8 +2219,9 @@ class Controller {
 class MobController extends Controller {
 
     static PEACFUL = 0
-    static ATTACk_ON_ATTACK = 1
-    static ALWAYS_ATTACk = 2
+    static ATTACK_ON_ATTACK = 2
+    static AGGRESSIVE_ALWAYS_ATTACK_EXEPT_DAYLIGHT = 1
+    static ALWAYS_ATTACk = 3
 
     constructor(entity, setup){
         super(entity);
@@ -1775,41 +2233,65 @@ class MobController extends Controller {
         this.activationRange = setup.activationRange ?? 10;
         this.hitRange = setup.hitRange ?? 2;
         this.damage = setup.damage ?? 2;
-        this.walkingSpeed = setup.walkingSpeed ?? 0.07;
         this.attackSpeed = setup.attackSpeed ?? 0.13;
+        this.autoJumb = setup.autoJumb ?? true;
+        this.aggressiveOn = setup.aggressiveOn ?? (entity => entity?.isPlayer);
+        this.defaultWalkSpeed = this.entity.walkSpeed;
 
         /**
          * random
          */
-        this.timeOffset = Math.random();
+        this.aggressive = this.attackType === MobController.ALWAYS_ATTACk;
+        this.timeOffset = Math.random() * 1000;
     }
 
     tick(elapsed, keys, game) {
-        const enemies = this.entity.getEntitiesInRadius(16);
-        for (const enemy of enemies) {
-            if(this.aggressiveOn(enemy)){
-                if(enemy.distance123 < 4) {
-                    this.entity.dealHit(4, 2);
-                }
-                if(enemy.distance123 > 0.5) {
-                    if(enemy.pos.x < this.entity.pos.x) {
-                        this.entity.walkLeft(true);
-                    } else {
-                        this.entity.walkRight(true);
+        /**
+         * check aggressive
+         */
+        if(this.attackType === MobController.ATTACK_ON_ATTACK) {
+            this.aggressive = this.entity.life < this.entity.maxLife;
+        }
+        if(this.attackType === MobController.AGGRESSIVE_ALWAYS_ATTACK_EXEPT_DAYLIGHT) {
+            this.aggressive = this.entity.life < this.entity.maxLife || this.entity.daylight < 0.9;
+        }
+        if(this.aggressive) {
+            const enemies = this.entity.getEntitiesInRadius(this.activationRange);
+            for (const enemy of enemies) {
+                if(this.aggressiveOn(enemy)) {
+                    if(enemy.distance123 < 4) {
+                        this.entity.dealHit(4, 2);
                     }
+                    if(enemy.distance123 > 0.5) {
+                        if(enemy.pos.x < this.entity.pos.x) {
+                            this.entity.walkLeft(this.autoJumb);
+                        } else {
+                            this.entity.walkRight(this.autoJumb);
+                        }
+                    }
+                    return;
                 }
-                return;
             }
+        }
+        
+        if(this.attackType === MobController.PEACFUL && this.entity.life < this.entity.maxLife) {
+            this.entity.walkSpeed = this.defaultWalkSpeed * 2;
+            this.running = true;
+        } else {
+            this.entity.walkSpeed = this.defaultWalkSpeed;
         }
         /**
          * random movement
          */
-        
-    }
-
-    aggressiveOn(entity) {
-        if(!entity) return false;
-        return entity.isPlayer;
+        const timeNoise = Noise.noise(this.entity.game.time / 17000, this.timeOffset);
+        const leftMargin = this.running ? 0 : -.4
+        const rightMargin = this.running ? 0 : .4
+        if(timeNoise < leftMargin) {
+            this.entity.walkLeft(this.autoJumb);
+        }
+        if(timeNoise > rightMargin) {
+            this.entity.walkRight();
+        }
     }
 }
 
@@ -1899,12 +2381,14 @@ class World{
         this.maxLoadedColumns = 100; //older chunks will get deleted when this number gets exeeded
         this.lastLoadedChunk = undefined;
         this.idChunk = 0;
+        this.surfaceMin = 60;
+        this.surfaceMax = 90;
 
         /**
          * testing
          */
-        const zombie = new Zombie(this.game, 0, 150);
-        this.entities.push(zombie);
+        // const zombie = new Spider(this.game, 0, 120);
+        // this.entities.push(zombie);
     }
 
     loadChunks(fromX, toX, fromY = this.height, toY = 0){
@@ -1946,18 +2430,46 @@ class World{
         }
         console.log("loading chunk at x=" + x + ", total chunks: " + this.loadedChunks.length);
         this.chunks[World.xToIndex(x)] = [];
+
+        
+
         for (let y = 0; y <= this.height; y++) {
             const block = this.worldFunction(x, y);
             this.chunks[World.xToIndex(x)][y] = block;
-            if(block){
-                if(block.emission > 0){
-                    this.lightSources.push(block);
-                }
+            if(block && block.emission > 0){
+                this.lightSources.push(block);
             }
         }
+
+        for (let y = 0; y <= this.height; y++) {
+            this.updateSpawnBlock(x, y);
+        }
+
+        
+
         this.loadedChunks.push(x);
         this.cleanChunks();
         return true;
+    }
+
+    updateSpawnBlock(x, y) {
+        const block = this.chunks[World.xToIndex(x)][y];
+        const blockAbove1 = this.chunks[World.xToIndex(x)][y + 1];
+        const blockAbove2 = this.chunks[World.xToIndex(x)][y + 2];
+
+        if(!block || !block[0]) return;
+        block[0].border = false;
+
+        if(!block[0]?.solid) return;
+        if(!this.isBlockObstacle(blockAbove1) && !this.isBlockObstacle(blockAbove2)) {
+            block[0].spawnBlock = true;
+            // block[0].border = true;
+        }
+    }
+
+    isBlockObstacle(block) {
+        if(!block) return false;
+        return block[0]?.solid;
     }
 
     cleanChunks(){
@@ -1976,6 +2488,14 @@ class World{
         console.log("deleting chunk at x=" + x);
         this.chunks[World.xToIndex(x)] = undefined;
         this.loadedChunks.splice(this.loadedChunks.indexOf(x), 1);
+        /**
+         * kill entities
+         */
+        for (const entity of this.entities) {
+            if(entity.pos.x >= x - 1 &&  entity.pos.x <= x + 1) {
+                entity.die();
+            }
+        }
     }
 
     static xToIndex(x){
@@ -2124,16 +2644,16 @@ class World{
         return true;
     }
 
-    canBlockBeplacedHere(x, y, layer){
+    canBlockBeplacedHere(x, y, layer) {
         const reverseLayer = layer === 0 ? 1 : 1;
         const self = this.getBlock(x, y);
         const a = this.getBlock(x - 1, y);
-        const b = this.getBlock(x, y- 1);
+        const b = this.getBlock(x, y - 1);
         const c = this.getBlock(x + 1, y);
         const d = this.getBlock(x, y + 1);
         // console.log((a[layer]?.solid || b[layer]?.solid || c[layer]?.solid || d[layer]?.solid || self[reverseLayer])
         // && !(a[layer]?.solid && b[layer]?.solid && c[layer]?.solid && d[layer]?.solid))
-        return (a || b || c || d || self?.[reverseLayer])
+        return (a?.[layer] || b?.[layer] || c?.[layer] || d?.[layer] || self?.[reverseLayer])
         && !(a?.[layer]?.solid && b?.[layer]?.solid && c?.[layer]?.solid && d?.[layer]?.solid) && !self?.[0];
     }
 
@@ -2156,11 +2676,9 @@ class World{
     }
 
     surfaceLevelAt(x){
-        const surfaceMin = 100;
-        const surfaceMax = 130;
         const xNoise = Noise.noise(x * 0.01, 0);
         const xNoiseSmall = Noise.noise(x * 0.05, 0);
-        return Math.round(surfaceMin + (xNoise + xNoiseSmall * 0.2) * (surfaceMax - surfaceMin))
+        return Math.round(this.surfaceMin + (xNoise + xNoiseSmall * 0.2) * (this.surfaceMax - this.surfaceMin))
     }
 
     worldFunction(x, y){
@@ -2170,24 +2688,12 @@ class World{
                 return this.changedBlocks[World.xToIndex(x)][y];
             }
         }
-        if(x === 1 && y === 52){
-            const block = new CraftingTable(x, y, this);
-            block.placed = true;
-            return [block];
-        }
-        if(x === 1 && y === 53){
-            const block = new Furnance(x, y, this);
-            block.placed = true;
-            return [block];
-        }
+        if(y > 110) return null;
         const noise = Noise.noise(x / 6, y / 6) / 2 + 0.5;
         const xNoise = Noise.noise(x * 0.01, 0);
         const xNoiseSmall = Noise.noise(x * 0.05, 0);
 
-        const surfaceMin = 100;
-        const surfaceMax = 130;
-
-        const surfaceLevel = Math.round(surfaceMin + (xNoise + xNoiseSmall * 0.2) * (surfaceMax - surfaceMin));
+        const surfaceLevel = Math.round(this.surfaceMin + (xNoise + xNoiseSmall * 0.2) * (this.surfaceMax - this.surfaceMin));
         const caveOnSurface = isCave(x, surfaceLevel);
         
         let blocks = [];
@@ -2271,7 +2777,7 @@ class World{
         // x * 0.01, 0
         const xTreeNoise = Noise.noise((treeXOrigin + 2) * 0.01)
         const xTreeNoiseSmall = Noise.noise((treeXOrigin + 2) * 0.05)
-        const treeYOrigin = Math.round(surfaceMin + (xTreeNoise + xTreeNoiseSmall * 0.2) * (surfaceMax - surfaceMin));
+        const treeYOrigin = Math.round(this.surfaceMin + (xTreeNoise + xTreeNoiseSmall * 0.2) * (this.surfaceMax - this.surfaceMin));
         if(!isCave(treeXOrigin + 2, treeYOrigin)){
             if((Noise.noise(treeXOrigin * 1000) / 2 + 0.5) < treeDensity) {
                 let treeIndex =  Math.floor((Noise.noise(treeXOrigin, 0) / 2 + 0.5) * trees.length);
@@ -2418,7 +2924,7 @@ class World{
         return blocks;
     }
 
-    getEntitiesInRadius(x, y, radius, exclude){
+    getEntitiesInRadius(x, y, radius, exclude = []){
         const out= [];
         for (const entity of this.entities) {
             if(exclude.includes(entity)){
@@ -2471,8 +2977,48 @@ class World{
                 for (const block of blocks) {
                     if(!block) continue;
                     block.tick(elapsed);
+                    /**
+                     * spawning
+                     */
+                    const maxMonsterLight = 0.3
+                    const minfriendlyLight = 0.9;
+                    if(this.entities.length > 100) continue;
+                    if(Math.random() < 0.01) {
+                        if(block.spawnBlock && this.getEntitiesInRadius(block.pos.x, block.pos.y, 20).length === 0) {
+                            if(block.light < maxMonsterLight){
+                                console.log("spawned monster, " + this.entities.length + "Entities");
+                                this.spawnEntity(this.getRandomMonster(block.pos.x, block.pos.y));
+                            }
+                            if(block.light > minfriendlyLight) {
+                                console.log("spawned firnedly Mob, " + this.entities.length + "Entities");
+                                this.spawnEntity(this.getRandomFriendlyMob(block.pos.x, block.pos.y));
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    getRandomMonster(x, y) {
+        const random = Math.random();
+        y += 3;
+        if(random < 0.5) {
+            return new Spider(this.game, x, y);
+        } else {
+            return new Zombie(this.game, x, y);
+        }
+    }
+
+    getRandomFriendlyMob(x, y) {
+        const random = Math.random();
+        y += 1.5;
+        if(random < 0.2) {
+            return new Cow(this.game, x, y);
+        } else if(random < 0.5) {
+            return new Chicken(this.game, x, y);
+        } else {
+            return new Pig(this.game, x, y);
         }
     }
 
@@ -2579,6 +3125,11 @@ class World{
         const blocks = this.getBlock(x, y);
         this.changedBlocks[World.xToIndex(x)][y] = blocks;
         // this.recalculateLightInRect(x - 5, y + 5, 10, 10);
+        this.updateSpawnBlock(x, y + 2);
+        this.updateSpawnBlock(x, y + 1);
+        this.updateSpawnBlock(x, y);
+        this.updateSpawnBlock(x, y - 1);
+        this.updateSpawnBlock(x, y - 2);
     }
 
     mousedown(e){
@@ -2644,7 +3195,24 @@ class DroppedItem extends Entity {
         this.controller = new DroppedItemController(this);
     }
 
-    canITakeYou(player){
+    canITakeYou(){
+        return this.game.time - this.droppedTime > this.timeout;
+    }
+}
+
+class XPPoint extends Entity {
+
+    constructor(x, y, game, timeout) {
+        super(x - 0.1, y, 0.5, 0.5, texturepack, textureAtlasMap.xpPoint, new Hitbox(0,0,0.5, 0.7), game, 0, true, false);
+        const randomness = 0.5;
+        this.gravity = 1;
+        this.vel.add(new Point(Math.random() * randomness - randomness / 2, Math.random() * randomness - randomness / 2))
+        this.droppedTime = game.time;
+        this.timeout = timeout;
+        this.controller = new DroppedItemController(this);
+    }
+
+    canITakeYou(){
         return this.game.time - this.droppedTime > this.timeout;
     }
 }

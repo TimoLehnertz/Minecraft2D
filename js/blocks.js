@@ -1,6 +1,12 @@
 
 const tileWidth = 16;
-let texturepack = "atlas1";
+const texturepack = {
+    texture: "atlas1",
+    textures: ["atlas", "atlas1"],
+    increment: () => {
+        const active = this.textures.in
+    }
+}
 //height: 31
 //width:  55
 const textureAtlasMap = {
@@ -140,12 +146,7 @@ const textureAtlasMap = {
     },
     diamondPickaxe: { x: 43, y: 21, width: 1, height: 1},
     diamondShovel: { x: 43, y: 22, width: 1, height: 1},
-    diamondSword: {
-        x: 44,
-        y: 23,
-        width: 1,
-        height: 1
-    },
+    diamondSword: { x: 43, y: 23, width: 1, height: 1},
 
 
 
@@ -234,17 +235,52 @@ const textureAtlasMap = {
     glowstone: { x: 23, y: 31, width: 1, height: 1},
     bedrock: { x: 11, y: 26, width: 1, height: 1},
     stick: { x: 1, y: 25, width: 1, height: 1},
-    heart: { x: 12, y: 23, width: 1, height: 1},
     torch: { x: 36, y: 9, width: 1, height: 1},
+    xpPoint: { x: 44, y: 27, width: 1, height: 1},
+    bone: { x: 39, y: 8, width: 1, height: 1},
+    boneMeal: { x: 44, y: 14, width: 1, height: 1},
+    spiderEye: { x: 48, y: 22, width: 1, height: 1},
+    string: { x: 48, y: 31, width: 1, height: 1},
 
+    fire1: { x: 0, y: 30, width: 1, height: 1},
+    fire2: { x: 1, y: 30, width: 1, height: 1},
+    leather: { x: 46, y: 10, width: 1, height: 1},
+    feather: { x: 44, y: 28, width: 1, height: 1},
+    
+    /**
+     * hearts
+     */
+    emptyHeart: { x: 55.2, y: 14.2, width: 0.6, height: 0.6},
+    halfHeart: { x: 55.2, y: 13.2, width: 0.6, height: 0.6},
+    heart: { x: 55.2, y: 12.2, width: 0.6, height: 0.6},
+    /**
+     * hunger
+     */
+    emptyHunger: { x: 55.2, y: 17.2, width: 0.6, height: 0.6},
+    halfHunger: { x: 55.2, y: 16.2, width: 0.6, height: 0.6},
+    fullHunger: { x: 55.2, y: 15.2, width: 0.6, height: 0.6},
     /**
      * food
      */
-     bread: { x: 39, y: 18, width: 1, height: 1},
-     apple: { x: 38, y: 27, width: 1, height: 1},
-     goldenApple: { x: 38, y: 28, width: 1, height: 1},
-     carrot: { x: 39, y: 27, width: 1, height: 1},
+    bread: { x: 39, y: 18, width: 1, height: 1},
+    apple: { x: 38, y: 27, width: 1, height: 1},
+    goldenApple: { x: 38, y: 28, width: 1, height: 1},
+    carrot: { x: 39, y: 27, width: 1, height: 1},
+    rottenFlesh: { x: 48, y: 10, width: 1, height: 1},
+    rawChicken: { x: 40, y: 5, width: 1, height: 1},
+    cookedChicken: { x: 40, y: 4, width: 1, height: 1},
+    rawBeef: { x: 39, y: 1, width: 1, height: 1},
+    steak: { x: 39, y: 0, width: 1, height: 1},
+    pork: { x: 47, y: 9, width: 1, height: 1},
+    grilledPork: { x: 47, y: 8, width: 1, height: 1},
 
+     /**
+      * mobs
+      */
+    spider: { x: 56, y: 0, width: 4, height: 2},
+    pig: { x: 56, y: 2, width: 2, height: 2},
+    cow: { x: 56, y: 4, width: 2, height: 2},
+    chicken: { x: 56, y: 6, width: 2, height: 2},
 };
 
 class Item extends Panel {
@@ -285,6 +321,7 @@ class Item extends Panel {
         this.breakLevel = setup.breakLevel ?? 0;
         this.fuel = setup.fuel ?? 0;//for furnance
         this.getFurnanceResult = setup.getFurnanceResult ?? (() => null);//for furnance
+        this.food = setup.food ?? 0;
 
         this.dropped = false;
         this.padding = 4;
@@ -307,7 +344,7 @@ class Item extends Panel {
         }
     }
 
-    isStackableWith(item){
+    isStackableWith(item) {
         if(!item){
             return false;
         }
@@ -354,7 +391,7 @@ class Item extends Panel {
                     if(match === countB){
                         const res = recipe.getResult();
                         res.stack = recipe.amount ?? 1;
-                        console.log("crafting " + res.name);
+                        // console.log("crafting " + res.name);
                         return res;
                     }
                 }
@@ -443,6 +480,7 @@ class Block extends Item {
         this.emission = setup.emission ?? 0;
         this.emissisonRange = setup.emissisonRange ?? 0;
         this.canFall = setup.canFall ?? false;
+        this.xp = setup.xp ?? 0;
         
         this.hitbox = setup.hitbox ?? new Hitbox(0, 0, 1, 1);
         this.hitbox.gPosRef = this.pos;
@@ -455,6 +493,8 @@ class Block extends Item {
         this.broken = 0;
         this.sunLight = 1;
         this.sourceLight = 0;
+
+        this.spawnBlock = false;
     }
 
     draw(drawer, camera, y) {
@@ -489,6 +529,10 @@ class Block extends Item {
         }
     }
 
+    get light() {
+        return this.sourceLight + this.sunLight;
+    }
+
     tick(elapsed){
         if(!this.getHit){
             this.broken = Math.max(0, this.broken - (1000 / elapsed) * 0.01);
@@ -521,15 +565,24 @@ class Block extends Item {
         if(this.destroyed){
             return;
         }
-        const drop = this.getDrop(tool);
         this.placed = false;
         this.destroyed = true;
-
-
+        
+        
+        const drop = this.getDrop(tool);
+        if(drop) {
+            const droppedItem = new DroppedItem(drop, this.pos.x + this.width / 2, this.pos.y + this.width / 2, this.world.game, 100);
+            droppedItem.vel.y = 4;
+            this.world.spawnEntity(droppedItem);
+        }
+        if(this.xp > 0) {
+            const center = this.hitbox.center;
+            for (let i = 0; i < this.xp; i++) {
+                const xpPoint = new XPPoint(this.pos.x, this.pos.y, this.world.game, 1000);
+                this.world.spawnEntity(xpPoint);
+            }
+        }
         this.world.destroyBlock(this);
-        const droppedItem = new DroppedItem(drop, this.pos.x + this.width / 2, this.pos.y + this.width / 2, this.world.game, 100);
-        droppedItem.vel.y = 4;
-        this.world.spawnEntity(droppedItem);
     }
 
     blockBelowBroke() {
@@ -875,7 +928,8 @@ class CoalOre extends Block {
         super(CoalOre.NAME, x, y, texturepack, textureAtlasMap.coalOre, Item.TYPE_PICKAXE, world, {
             resistance: 425,
             minTool: Item.CAN_BREAK_STONE,
-            getDrop: (tool) => new Coal()
+            getDrop: (tool) => new Coal(),
+            xp: 1,
         });
     }
 }
@@ -884,6 +938,7 @@ class Redstone extends Block {
     constructor(x, y, world) {
         super("Redstone", x, y, texturepack, textureAtlasMap.redstone, Item.TYPE_PICKAXE, world, {
             resistance: 435,
+            xp: 1,
         });
     }
 }
@@ -919,7 +974,8 @@ class SmaragdOre extends Block {
         super("SmaragdOre", x, y, texturepack, textureAtlasMap.smaragdOre, Item.TYPE_PICKAXE, world, {
             resistance: 475,
             minTool: Item.CAN_BREAK_DIAMONDS,
-            getDrop: () => new Smaragd()
+            getDrop: () => new Smaragd(),
+            xp: 1,
         });
     }
 }
@@ -930,7 +986,8 @@ class DiamondOre extends Block {
         super(DiamondOre.NAME, x, y, texturepack, textureAtlasMap.diamondOre, Item.TYPE_PICKAXE, world, {
             resistance: 525,
             minTool: Item.CAN_BREAK_DIAMONDS,
-            getDrop: tool => new Diamond()
+            getDrop: tool => new Diamond(),
+            xp: 3,
         });
     }
 }
@@ -1004,7 +1061,7 @@ class OakPlank extends Block {
 
 class DarkOakLog extends Block {
     constructor(x, y, world) {
-        super("OakLog", x, y, texturepack, textureAtlasMap.darkOakLog, Item.TYPE_AXE, world, {
+        super("DarkOakLog", x, y, texturepack, textureAtlasMap.darkOakLog, Item.TYPE_AXE, world, {
             resistance: 100,
             fuel: 1.5,
             layer: 1,
@@ -1028,6 +1085,7 @@ class Leaf extends Block {
     constructor(x, y, world) {
         super("Leaf", x, y, texturepack, textureAtlasMap.leaf, Item.TYPE_AXE, world, {
             resistance: 50,
+            getDrop: () => Math.random() < 0.15 ? new Apple() : undefined
         });
     }
 }
@@ -1207,6 +1265,101 @@ class Diamond extends Item {
 }
 
 /**
+ * food
+ */
+ class Apple extends Item {
+    constructor(){
+        super("Apple", texturepack, textureAtlasMap.apple, Item.TYPE_NONE, {
+            food: 4
+        });
+    }
+}
+
+
+class GoldenApple extends Item {
+    constructor(){
+        super("GoldenApple", texturepack, textureAtlasMap.goldenApple, Item.TYPE_NONE, {
+            food: 20
+        });
+    } 
+}
+
+class Bread extends Item {
+    constructor(){
+        super("Bread", texturepack, textureAtlasMap.breas, Item.TYPE_NONE, {
+            food: 3
+        });
+    } 
+}
+
+class Carrot extends Item {
+    constructor(){
+        super("Carrot", texturepack, textureAtlasMap.carrot, Item.TYPE_NONE, {
+            food: 1
+        });
+    } 
+}
+
+class RottenFlesh extends Item {
+    constructor(){
+        super("RottenFlesh", texturepack, textureAtlasMap.rottenFlesh, Item.TYPE_NONE, {
+            food: 0.5
+        });
+    } 
+}
+
+class RawChicken extends Item {
+    constructor(){
+        super("RawChicken", texturepack, textureAtlasMap.rawChicken, Item.TYPE_NONE, {
+            food: 1,
+            getFurnanceResult: () => new CookedChicken(),
+        });
+    } 
+}
+
+class CookedChicken extends Item {
+    constructor(){
+        super("CookedChicken", texturepack, textureAtlasMap.cookedChicken, Item.TYPE_NONE, {
+            food: 3
+        });
+    } 
+}
+
+class RawBeef extends Item {
+    constructor(){
+        super("RawBeef", texturepack, textureAtlasMap.rawBeef, Item.TYPE_NONE, {
+            food: 2,
+            getFurnanceResult: () => new Steak(),
+        });
+    } 
+}
+
+class Steak extends Item {
+    constructor(){
+        super("Steak", texturepack, textureAtlasMap.steak, Item.TYPE_NONE, {
+            food: 4
+        })
+    } 
+}
+
+class Pork extends Item {
+    constructor(){
+        super("Pork", texturepack, textureAtlasMap.pork, Item.TYPE_NONE, {
+            food: 2,
+            getFurnanceResult: () => new GrilledPork(),
+        });
+    } 
+}
+
+class GrilledPork extends Item {
+    constructor(){
+        super("GrilledPork", texturepack, textureAtlasMap.grilledPork, Item.TYPE_NONE, {
+            food: 6
+        });
+    } 
+}
+
+/**
  * stuff
  */
  class Stick extends Item {
@@ -1217,6 +1370,44 @@ class Diamond extends Item {
         });
     }
 }
+
+class Leather extends Item {
+    constructor(){
+        super("Leather", texturepack, textureAtlasMap.leather, Item.TYPE_NONE, {
+        });
+    }
+}
+
+class String extends Item {
+    constructor(){
+        super("String", texturepack, textureAtlasMap.string, Item.TYPE_NONE, {
+        });
+    } 
+}
+
+class Feather extends Item {
+    constructor(){
+        super("Feather", texturepack, textureAtlasMap.feather, Item.TYPE_NONE, {
+        });
+    } 
+}
+
+class BoneMeal extends Item {
+    constructor(){
+        super("BoneMeal", texturepack, textureAtlasMap.boneMeal, Item.TYPE_NONE, {
+        });
+    } 
+}
+
+class SpiderEye extends Item {
+    constructor(){
+        super("SpiderEye", texturepack, textureAtlasMap.spiderEye, Item.TYPE_NONE, {
+        });
+    } 
+}
+
+
+
 
 class Torch extends Block {
     constructor(x, y, world) {

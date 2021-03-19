@@ -1,6 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 * {
   margin: 0;
   padding: 0;
+  font-family: 'Press Start 2P', cursive;
+}
+
+body {
   background-color: #333;
+  overflow: hidden;
+}
+
+.controlls {
+  position: absolute;
+  background: #0003;
+  right: 0;
+  padding: 0.5rem;
+  color: white;
+  border-bottom-left-radius: 1rem;
+  font-size: 0.8rem;
+  -webkit-transition: all 0.2s;
+  transition: all 0.2s;
+}
+
+.controlls p {
+  line-height: 1.3rem;
+  -webkit-transition: all 0.2s;
+  transition: all 0.2s;
+}
+
+.controlls.minimized {
+  background: black;
+  -webkit-transform: translateX(90%) translateY(-80%);
+          transform: translateX(90%) translateY(-80%);
+}
+
+.controlls.minimized p, .controlls.minimized h2 {
+  opacity: 0;
+}
+
+.controlls.minimized button {
+  -webkit-transform: rotate(45deg);
+          transform: rotate(45deg);
+}
+
+button {
+  padding: 0.5rem;
+  background: black;
+  margin-top: 1rem;
+  color: white;
 }
 /*# sourceMappingURL=main.css.map */

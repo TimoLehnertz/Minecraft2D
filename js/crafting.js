@@ -114,18 +114,136 @@ const CRAFTING_RECIPES = [
             [null, "stick", null]
         ],
     },{
-        getResult: () => new Torck(),
+        getResult: () => new IronAxe(),
+        recipe: [
+            [null, "Iron", "Iron"],
+            [null, "stick", "Iron"],
+            [null, "stick", null]
+        ],
+        
+    },{
+        getResult: () => new IronPickaxe(),
+        recipe: [
+            ["Iron", "Iron", "Iron"],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new IronSword(),
+        recipe: [
+            [null, "Iron", null],
+            [null, "Iron", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new IronHoe(),
+        recipe: [
+            [null, "Iron", "Iron"],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new IronShovel(),
+        recipe: [
+            [null, "Iron", null],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+    },{
+        getResult: () => new GoldAxe(),
+        recipe: [
+            [null, "Gold", "Gold"],
+            [null, "stick", "Gold"],
+            [null, "stick", null]
+        ],
+        
+    },{
+        getResult: () => new GoldPickaxe(),
+        recipe: [
+            ["Gold", "Gold", "Gold"],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new GoldSword(),
+        recipe: [
+            [null, "Gold", null],
+            [null, "Gold", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new GoldHoe(),
+        recipe: [
+            [null, "Gold", "Gold"],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new GoldShovel(),
+        recipe: [
+            [null, "Gold", null],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+    },{
+        getResult: () => new DiamondAxe(),
+        recipe: [
+            [null, "Diamond", "Diamond"],
+            [null, "stick", "Diamond"],
+            [null, "stick", null]
+        ],
+        
+    },{
+        getResult: () => new DiamondPickaxe(),
+        recipe: [
+            ["Diamond", "Diamond", "Diamond"],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new DiamondSword(),
+        recipe: [
+            [null, "Diamond", null],
+            [null, "Diamond", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new DiamondHoe(),
+        recipe: [
+            [null, "Diamond", "Diamond"],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+
+    },{
+        getResult: () => new DiamondShovel(),
+        recipe: [
+            [null, "Diamond", null],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+    },{
+        getResult: () => new StoneShovel(),
+        recipe: [
+            [null, "Diamond", null],
+            [null, "stick", null],
+            [null, "stick", null]
+        ],
+    },{
+        getResult: () => new Torch(),
         recipe: [
             [null, null, null],
             [null, "coal", null],
             [null, "stick", null]
         ],
-    },{
-        getResult: () => new Torck(),
-        recipe: [
-            [null, null, null],
-            [null, "CharCoal", null],
-            [null, "stick", null]
-        ],
-    },       
+        amount: 4
+    }
 ]

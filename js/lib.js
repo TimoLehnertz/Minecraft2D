@@ -51,6 +51,7 @@ class Point{
     }
 
     distanceFrom(b){
+        if(!b) return 1000000;
         const x = this.x - b.x;
         const y = this.y - b.y;
         return Math.sqrt(x*x + y*y);
@@ -291,13 +292,16 @@ class Drawer{
         this.ctx.fillRect(x, y, width, height);
     }
 
-    text(x, y, text, font = "15px Arial", color = "black") {
+    text(x, y, text, font = "12px 'Press Start 2P'", color = "white") {
         this.ctx.fillStyle = color
         this.ctx.font = font;
         this.ctx.fillText(text, x, y)
     }
 
     draw(texture, x, y, width, height, tx = 0, ty = 0, twidth = 16, theight = 16, filter = "", brightness = 1){
+        if(typeof texture === "object"){
+            texture = texture.texture;
+        }
         const screen = this.screen;
         if(x > screen.width || x + width < 0 || y > screen.height || y + height < 0){
             return;
@@ -322,7 +326,7 @@ class Drawer{
         //     this.ctx.translate(-(x + width / 2), -(y + height / 2));
         // } else{
             try {
-                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width + 0.6, height + 0.5);
+                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width, height);
             } catch (error) {
                 // console.log(texture);
                 // console.log(error);
