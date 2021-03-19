@@ -5,7 +5,7 @@ $ip = $_SERVER['REMOTE_ADDR'];
 // dbExecute("");
 dbInsert("USE minecraft; INSERT INTO views(ip, region) VALUES (?, ?);", $ip, ip_info($ip));
 
-header("location: /index.php");
+// header("location: /index.php");
 
 function ip_info($ip = NULL, $purpose = "location", $deep_detect = TRUE) {
     $output = NULL;
