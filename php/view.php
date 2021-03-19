@@ -2,6 +2,7 @@
 include "../data/dbh.php";
 
 $ip = $_SERVER['REMOTE_ADDR'];
+echo $ip;
 dbExecute("USE minecraft; ");
 echo dbInsert("INSERT INTO views(ip, region) VALUES (?, ?);", $ip, ip_info($ip));
 
