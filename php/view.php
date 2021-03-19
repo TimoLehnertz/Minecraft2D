@@ -13,7 +13,7 @@ $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 echo "<br>";
 echo $loc;
 echo "<br>";
-var_dump(dbExecute("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", $ip, $loc));
+var_dump(dbExecute("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", "ss", $ip, $loc));
 // var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES ('testa', 'testb');"));
 
 // header("location: /index.php");
