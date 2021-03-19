@@ -18,16 +18,16 @@ echo "<br>";
 
 // header("location: /index.php");
 
-    if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);")){
-        if(!$stmt->bind_param("ss", $ip, $loc)){
-            $stmt->close();
-            echo "binding error";
-        }
-        if($stmt->execute()){
-            echo "succsess"
-        }
+if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);")){
+    if(!$stmt->bind_param("ss", $ip, $loc)){
         $stmt->close();
+        echo "binding error";
     }
+    if($stmt->execute()){
+        echo "succsess";
+    }
+    $stmt->close();
+}
 
 
 function ip_info($ip = NULL, $purpose = "location", $deep_detect = TRUE) {
