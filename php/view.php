@@ -3,11 +3,12 @@ include "../data/dbh.php";
 
 $ip = $_SERVER['REMOTE_ADDR'];
 echo $ip;
+echo ip_info($ip);
 
 $mysqli->select_db("Minecraft");
 
-// var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", $ip, ip_info($ip)));
-var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES ('testa', 'testb');"));
+var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", $ip, ip_info($ip).""));
+// var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES ('testa', 'testb');"));
 
 // header("location: /index.php");
 
