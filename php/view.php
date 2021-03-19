@@ -10,7 +10,9 @@ $mysqli->select_db("Minecraft");
 $info = ip_info($ip);
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
-
+echo "<br>";
+echo $loc;
+echo "<br>";
 var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", $ip, $loc));
 // var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES ('testa', 'testb');"));
 
