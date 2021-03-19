@@ -7,7 +7,11 @@ var_dump(ip_info($ip));
 
 $mysqli->select_db("Minecraft");
 
-var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", $ip, ip_info($ip).""));
+$info = ip_info($ip);
+
+$loc = $info["country"].", ".$info["state"].", ".$info["city"];
+
+var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", $ip, $loc));
 // var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES ('testa', 'testb');"));
 
 // header("location: /index.php");
