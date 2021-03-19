@@ -6,7 +6,7 @@ echo $ip;
 
 $mysqli->select_db("Minecraft");
 
-var_dump(dbInsert("INSERT INTO views(ip, region) VALUES (?, ?);", $ip, ip_info($ip)));
+var_dump(dbInsert("SELECT Minecraft; INSERT INTO views(ip, region) VALUES (?, ?);", $ip, ip_info($ip)));
 
 // header("location: /index.php");
 
