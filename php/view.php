@@ -2,21 +2,10 @@
 include "../data/dbh.php";
 
 $ip = $_SERVER['REMOTE_ADDR'];
-var_dump($ip);
-var_dump(ip_info($ip));
-
-// $mysqli->select_db("Minecraft");
 
 $info = ip_info($ip);
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
-echo "<br>";
-echo $loc;
-echo "<br>";
-// var_dump(dbExecute("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);", "ss", $ip, $loc));
-// var_dump(dbInsert("INSERT INTO Minecraft.views(ip, region) VALUES ('testa', 'testb');"));
-
-// header("location: /index.php");
 
 if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);")){
     if(!$stmt->bind_param("ss", $ip, $loc)){
