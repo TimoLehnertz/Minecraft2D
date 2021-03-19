@@ -3,7 +3,7 @@ include "../data/dbh.php";
 
 $ip = $_SERVER['REMOTE_ADDR'];
 print_r($ip);
-var_dump($ip_info($ip));
+var_dump(ip_info($ip));
 
 $mysqli->select_db("Minecraft");
 
