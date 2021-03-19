@@ -5,7 +5,7 @@ $ip = $_SERVER['REMOTE_ADDR'];
 var_dump($ip);
 var_dump(ip_info($ip));
 
-$mysqli->select_db("Minecraft");
+// $mysqli->select_db("Minecraft");
 
 $info = ip_info($ip);
 
