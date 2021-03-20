@@ -14,7 +14,7 @@ $info = ip_info($ip);
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 
-if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?);")){
+if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);")){
     if(!$stmt->bind_param("ss", $ip, $loc){
         $stmt->close();
         echo "binding error";
