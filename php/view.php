@@ -1,21 +1,21 @@
 <?php
 include "../data/dbh.php";
 
-error_reporting(E_ALL);
+// error_reporting(E_ALL);
 
 $ip = $_SERVER['REMOTE_ADDR'];
 
-$info = ip_info($ip)
+$info = ip_info($ip);
 
-$userAgent = $_SERVER['HTTP_USER_AGENT'];
+// $userAgent = $_SERVER['HTTP_USER_AGENT'];
 
-var_dump( $userAgent);
-echo "test";
+// var_dump( $userAgent);
+// echo "test";
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 
-if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?, ?);")){
-    if(!$stmt->bind_param("sss", $ip, $loc, "test"){
+if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?);")){
+    if(!$stmt->bind_param("ss", $ip, $loc){
         $stmt->close();
         echo "binding error";
     }
