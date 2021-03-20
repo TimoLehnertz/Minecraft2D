@@ -7,6 +7,8 @@ $info = ip_info($ip);
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
 
+echo $userAgent;
+
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 
 if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?, ?);")){
