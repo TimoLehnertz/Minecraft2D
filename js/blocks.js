@@ -3,8 +3,10 @@ const tileWidth = 16;
 const texturepack = {
     texture: "atlas1",
     textures: ["atlas", "atlas1"],
-    increment: () => {
-        const active = this.textures.in
+    increment: function() {
+        const active = this.textures.indexOf(this.texture);
+        const newIndex = (active + 1) % this.textures.length;
+        this.texture = this.textures[newIndex];
     }
 }
 //height: 31
@@ -72,36 +74,16 @@ const textureAtlasMap = {
     /**
      * iron
      */
-    ironAxe: {
-        x: 46,
-        y: 28,
-        width: 1,
-        height: 1
-    },
+    ironAxe: { x: 45, y: 28, width: 1, height: 1},
     ironHoe: {
-        x: 47,
+        x: 46,
         y: 0,
         width: 1,
         height: 1
     },
-    ironPickaxe: {
-        x: 47,
-        y: 4,
-        width: 1,
-        height: 1
-    },
-    ironShovel: {
-        x: 47,
-        y: 5,
-        width: 1,
-        height: 1
-    },
-    ironSword: {
-        x: 47,
-        y: 6,
-        width: 1,
-        height: 1
-    },
+    ironPickaxe: { x: 46, y: 4, width: 1, height: 1},
+    ironShovel: { x: 46, y: 5, width: 1, height: 1},
+    ironSword: { x: 46, y: 6, width: 1, height: 1},
     /**
      * gold
      */
@@ -117,18 +99,8 @@ const textureAtlasMap = {
         width: 1,
         height: 1
     },
-    goldShovel: {
-        x: 46,
-        y: 24,
-        width: 1,
-        height: 1
-    },
-    goldShovel: {
-        x: 46,
-        y: 25,
-        width: 1,
-        height: 1
-    },
+    goldHoe: { x: 45, y: 18, width: 1, height: 1},
+    goldShovel: { x: 45, y: 24, width: 1, height: 1},
     goldSword: {
         x: 46,
         y: 26,
@@ -136,20 +108,13 @@ const textureAtlasMap = {
         height: 1
     },
     /**
-     * dia
+     * diamond
      */
-    diamondHoe: {
-        x: 44,
-        y: 18,
-        width: 1,
-        height: 1
-    },
+    diamondHoe: { x: 43, y: 18, width: 1, height: 1},
     diamondPickaxe: { x: 43, y: 21, width: 1, height: 1},
     diamondShovel: { x: 43, y: 22, width: 1, height: 1},
     diamondSword: { x: 43, y: 23, width: 1, height: 1},
-
-
-
+    diamondAxe: { x: 43, y: 18, width: 1, height: 1},
 
 
     /**
@@ -175,7 +140,6 @@ const textureAtlasMap = {
     },
     gravel: { x: 32, y: 0, width: 1, height: 1},
     stone: { x: 37, y: 3, width: 1, height: 1},
-    diamondAxe: { x: 43, y: 14, width: 1, height: 1},
     caveBackground: { x: 32, y: 21, width: 1, height: 1},
     /**
      * wood
@@ -436,12 +400,32 @@ class Item extends Panel {
                 if(!a[x][y] || !b[x][y]){
                     continue;
                 }
-                if(a[x][y].toLowerCase() === b[x][y].toLowerCase()){
+                if(Item.craftingMatch(b[x][y], a[x][y])) {//order is important
                     matched++;
                 }
             }
         }
         return matched;
+    }
+
+    static craftingMatch(itemName, compareTo) {
+        itemName = itemName.toLowerCase();
+        compareTo = compareTo.toLowerCase();
+
+        if(itemName === compareTo) return true;
+
+        for (const group of ITEM_GROUPS) {
+            if(compareTo === group.name.toLowerCase()) {
+                // console.log("found")
+                for (const member of group.members) {
+                    if(member.toLowerCase() !== itemName) continue;
+                    
+                    return true;
+                }
+                return false;
+            }
+        }
+        return false;
     }
 }
 
@@ -779,7 +763,7 @@ class GoldAxe extends Item {
 
 class GoldShovel extends Item {
     constructor(){
-        super("Gold_shovel", texturepack, textureAtlasMap.goldSword, Item.TYPE_SHOVEL, {
+        super("Gold_shovel", texturepack, textureAtlasMap.goldShovel, Item.TYPE_SHOVEL, {
             maxStack: 1,
             efficiency: Item.EFFICIENCY_GOLD,
         });
@@ -1131,7 +1115,7 @@ class CraftingTable extends Block {
 
 class Furnance extends Block {
     constructor(x, y, world) {
-        super("Furnancee", x, y, texturepack, textureAtlasMap.furnanceOff, Item.TYPE_AXE, world, {
+        super("Furnance", x, y, texturepack, textureAtlasMap.furnanceOff, Item.TYPE_AXE, world, {
             resistance: 100,
             solid: false
         });
@@ -1149,7 +1133,6 @@ class Furnance extends Block {
     activate(fuel){
         this.maxFuel = fuel;
         this.activated = true;
-        console.log("activating" + Math.random());
         this.fuel = fuel;
         this.textureMeta = textureAtlasMap.furnanceOn;
     }
