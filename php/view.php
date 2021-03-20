@@ -8,21 +8,22 @@ $ip = $_SERVER['REMOTE_ADDR'];
 
 $info = ip_info($ip);
 
-// $userAgent = $_SERVER['HTTP_USER_AGENT'];
+$userAgent = $_SERVER['HTTP_USER_AGENT'];
 
-// var_dump( $userAgent);
+var_dump( $userAgent);
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 echo $loc;
+echo $ip;
 
-if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);")){
-    if(!$stmt->bind_param("ss", $ip, $loc){
-        // $stmt->close();
+if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?, ?);")){
+    if(!$stmt->bind_param("sss", $ip, $loc, $userAgent)){
+        $stmt->close();
         echo "binding error";
     }
-    // if($stmt->execute()){
-    //     echo "succsess";
-    // }
+    if($stmt->execute()){
+        echo "succsess";
+    }
     $stmt->close();
 }
 
