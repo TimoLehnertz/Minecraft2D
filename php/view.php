@@ -22,7 +22,7 @@ echo $loc;
 echo $ip;
 
 if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device, gameVerion) VALUES (?, ?, ?, ?);")){
-    if(!$stmt->bind_param("ssss", $ip, $loc, $userAgent, $verion)){
+    if(!$stmt->bind_param("ssss", $ip, $loc, $userAgent, $gameVersion)){
         $stmt->close();
         echo "binding error";
     }
