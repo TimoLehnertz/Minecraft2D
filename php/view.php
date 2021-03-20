@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 
 $ip = $_SERVER['REMOTE_ADDR'];
 
-$info = ip_info($ip);
+$info = ip_info($ip)
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
 
