@@ -2,8 +2,6 @@
 echo "test";
 include "../data/dbh.php";
 
-error_reporting(E_ALL);
-
 $ip = $_SERVER['REMOTE_ADDR'];
 
 
