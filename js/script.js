@@ -57,7 +57,8 @@ $(function() {
 
 class Noise {
 
-    static seed = Math.round(Math.random() * 100000);
+    // static seed = Math.round(Math.random() * 100000);
+    static seed = 87046;
     // static seed = Math.random();
 
     constructor(seed){
@@ -1302,8 +1303,8 @@ class Chicken extends Mob {
             gravity: 3,
             behavior: {
                 attackType: MobController.PEACFUL,
-            }, 4
-        });
+            }
+        }, 4);
     }
 
     getDrops() {
