@@ -112,7 +112,7 @@ class ItemFrame extends Panel {
         // if(Math.random() < 0.4){
         //     const item = new Torch();
         //     item.stack = 20;
-            // this.holdItem(new CraftingTable());
+            // this.holdItem(new Steak());
         // }
         if(Math.random() < 0.4){
             // const item = new CraftingTable();
@@ -1640,6 +1640,7 @@ class Player extends Entity {
     }
 
     eat() {
+        if(this.hunger > this.maxHunger - 1) return;
         if(!this.handItem || this.handItem.food === 0) {
             this.foodProgress = 0;
             return;
