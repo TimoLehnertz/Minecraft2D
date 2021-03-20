@@ -1,6 +1,8 @@
 <?php
 include "../data/dbh.php";
 
+error_reporting(E_ALL);
+
 $ip = $_SERVER['REMOTE_ADDR'];
 
 $info = ip_info($ip);
