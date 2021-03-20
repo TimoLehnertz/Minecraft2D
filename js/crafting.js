@@ -1,3 +1,15 @@
+const ITEM_GROUPS = [
+    {
+        name: "WoodPlanks",
+        members: [
+            "OakPlank",
+            "DarkOakPlank",
+            "SprucePlank",
+            "BirchPlank",
+        ]
+    }
+];
+
 const CRAFTING_RECIPES = [
     {
         getResult: () => new IronBlock(),
@@ -12,8 +24,8 @@ const CRAFTING_RECIPES = [
         amount: 1,
         recipe: [
             [null, null, null],
-            [null, "oakPlank", "oakPlank"],
-            [null, "oakPlank", "oakPlank"],
+            [null, "WoodPlanks", "WoodPlanks"],
+            [null, "WoodPlanks", "WoodPlanks"],
         ]
     },{
         getResult: () => new Furnance(),
@@ -31,45 +43,53 @@ const CRAFTING_RECIPES = [
         ],
         amount: 4
     }, {
+        getResult: () => new DarkOakPlank(),
+        recipe: [
+            [null, null, null],
+            [null, "DarkOakLog", null],
+            [null, null, null]
+        ],
+        amount: 4
+    }, {
         getResult: () => new Stick(),
         recipe: [
             [null, null, null],
-            [null, "OakPlank", null],
-            [null, "OakPlank", null]
+            [null, "WoodPlanks", null],
+            [null, "WoodPlanks", null]
         ],
         amount: 4
     }, {
         getResult: () => new WoodenAxe(),
         recipe: [
-            [null, "OakPlank", "OakPlank"],
-            [null, "stick", "OakPlank"],
+            [null, "WoodPlanks", "WoodPlanks"],
+            [null, "stick", "WoodPlanks"],
             [null, "stick", null]
         ],
     },{
         getResult: () => new WoodenPickaxe(),
         recipe: [
-            ["OakPlank", "OakPlank", "OakPlank"],
+            ["WoodPlanks", "WoodPlanks", "WoodPlanks"],
             [null, "stick", null],
             [null, "stick", null]
         ],
     },{
         getResult: () => new WoodenSword(),
         recipe: [
-            [null, "OakPlank", null],
-            [null, "OakPlank", null],
+            [null, "WoodPlanks", null],
+            [null, "WoodPlanks", null],
             [null, "stick", null]
         ],
     },{
         getResult: () => new WoodenHoe(),
         recipe: [
-            [null, "OakPlank", "OakPlank"],
+            [null, "WoodPlanks", "WoodPlanks"],
             [null, "stick", null],
             [null, "stick", null]
         ],
     },{
         getResult: () => new WoodenShovel(),
         recipe: [
-            [null, "OakPlank", null],
+            [null, "WoodPlanks", null],
             [null, "stick", null],
             [null, "stick", null]
         ],

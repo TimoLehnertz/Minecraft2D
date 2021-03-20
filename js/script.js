@@ -18,8 +18,9 @@ const keymap = {
     hotbar7: ["Digit7"],
     hotbar8: ["Digit8"],
     hotbar9: ["Digit9"],
-    stats: ["KeyT"],
+    stats: ["KeyR"],
     kill: ["KeyK"],
+    switchTextures: ["KeyT"],
 };
 
 function toggleKeys(){
@@ -693,7 +694,7 @@ class Inventory extends Panel {
        }
     }
 
-    draw(drawer, elapsed){
+    draw(drawer){
         this.visible = this.opened;
 
         if(this.opened){
@@ -706,6 +707,11 @@ class Inventory extends Panel {
             this.hotbar.draw(drawer, screen.width / 2 - this.hotbar.width / 2, (screen.height - this.hotbar.height - 20) - this.hotbar.y);
         }
         super.draw(drawer);
+
+        if(this.grabbedItem && this.mouse !== undefined){
+            drawer.fillRect(this.mouse.x - 10, this.mouse.y - 30, 175, 25, "#0007");
+            drawer.text(this.mouse.x, this.mouse.y - 10, this.grabbedItem.name);
+        }
     }
 
     mousemove(e, parsedMouse) {
@@ -907,6 +913,8 @@ class Entity extends Point {
         this.light = 1;
         this.canClimb = false;
         this.dayLight = 0;
+        this.maxFallSpeed = 10000;
+        this.xp = 0;
 
         this.alive = true;
         this.burning = 0;
@@ -1121,6 +1129,10 @@ class Entity extends Point {
          */
         const fallof = 1.01;
         this.vel.multiply(new Point(1 / fallof, 1 / fallof));//half every 100ms
+        /**
+         * limit
+         */
+        this.vel.y = Math.min(this.maxFallSpeed, this.vel.y);
     }
 
     getEntitiesInRadius(radius){
@@ -1203,8 +1215,8 @@ class Entity extends Point {
     }
 
     die() {
-        this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
         if(!this.alive) return false;
+        this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
         console.log("I died :/");
         this.alive = false;
         let drops = this.getDrops();
@@ -1217,6 +1229,12 @@ class Entity extends Point {
                 droppedItem.vel.x = Math.random() * 15 - 5;
                 droppedItem.vel.y = Math.random() * 10 + 10;
                 this.game.spawnEntity(droppedItem);
+            }
+        }
+        for (let i = 0; i < this.xp; i++) {
+            if(Math.random() < 0.4) {
+                const xpPoint = new XPPoint(this.pos.x, this.pos.y, this.game, 500);
+                this.game.world.spawnEntity(xpPoint);
             }
         }
         delete this.inventory;
@@ -1301,7 +1319,7 @@ class Chicken extends Mob {
         super(game, x, y, 0.9, 0.9, new Hitbox(0, 0, 0.9, 0.9), texturepack, textureAtlasMap.chicken, {
             walkingSpeed: 0.07,
             life: 6,
-            gravity: 3,
+            maxFallSpeed: 2,
             behavior: {
                 attackType: MobController.PEACFUL,
             }
@@ -1558,9 +1576,14 @@ class Player extends Entity {
          * testing
          */
 
-        this.inventory.takeItem(new Furnance());
-        this.inventory.takeItem(new CraftingTable());
-        this.inventory.takeItem(new Stick());
+        // this.inventory.takeItem(new Furnance());
+        // this.inventory.takeItem(new CraftingTable());
+        // this.inventory.takeItem(new Stick());
+        // this.inventory.takeItem(new Stick());
+        // this.inventory.takeItem(new DarkOakPlank());
+        // this.inventory.takeItem(new DarkOakPlank());
+        // this.inventory.takeItem(new DarkOakPlank());
+        // this.inventory.takeItem(new DarkOakPlank());
     }
 
     regen() {
@@ -1573,16 +1596,8 @@ class Player extends Entity {
 
     
     die() {
-        if(!this.alive) return false;
-        this.alive = false;
         this.game.clearPlayer();
         super.die();
-        for (let i = 0; i < this.xp; i++) {
-            if(Math.random() <0.4) {
-                const xpPoint = new XPPoint(this.pos.x, this.pos.y, this.game, 500);
-                this.game.world.spawnEntity(xpPoint);
-            }
-        }
         window.setTimeout(() => this.game.respawnPlayer(), 2000);
     }
 
@@ -1657,7 +1672,7 @@ class Player extends Entity {
             return;
         }
 
-        this.foodProgress += 0.08;
+        this.foodProgress += 0.025;
         if(this.foodProgress >= 1) {
             this.foodProgress = 0;
             this.hunger = Math.min(this.maxHunger, this.hunger + this.handItem.food);
@@ -1914,7 +1929,7 @@ class Game {
         this.playerInfo = new PlayerInfo();
         this.keyStatus = {};
         this.mousePressed = false;
-        this.debug = true;
+        this.debug = false;
         this.init();
         this.playerReach = 5;
         this.inputEventListener = [];
@@ -1984,6 +1999,9 @@ class Game {
         }
         if(keyPressed("kill", this.keyStatus)) {
             this.activePlayer?.die();
+        }
+        if(keyPressed("switchTextures", this.keyStatus)) {
+            texturepack.increment();
         }
         this.camera.scale = Math.max(this.camera.minScale, Math.min(this.camera.scale, this.camera.maxScale));
     }
@@ -2166,7 +2184,7 @@ class Game {
 
     clearPlayer() {
         if(this.activePlayer){
-            this.activePlayer.die();
+            // this.activePlayer.die();
             console.log(this.inputEventListener.indexOf(this.activePlayer.inventory));
             this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer.inventory), 1);
             this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer), 1);
@@ -2351,10 +2369,10 @@ class KeyboardController extends Controller {
         if(keyPressed("right", keys)){
             this.entity.walkRight();
         }
-        if(!keyPressed("right", keys) && this.entity.vel.x > 0 && this.entity.isGrounded){
+        if(!keyPressed("right", keys) && this.entity.vel.x > 0 && this.entity.isGrounded) {
             this.entity.vel.multiply(new Point(0.8, 1));
         }
-        if(!keyPressed("left", keys) && this.entity.vel.x < 0 && this.entity.isGrounded){
+        if(!keyPressed("left", keys) && this.entity.vel.x < 0 && this.entity.isGrounded) {
             this.entity.vel.multiply(new Point(0.8, 1));
         }
         if(keyPressed("down", keys)){
@@ -2763,6 +2781,9 @@ class World{
             }
         }
 
+        /**
+         * trees
+         */
         const trees = [[
             [null, "Leaf", "Leaf", null, null],
             [null, "Leaf", "Leaf", "Leaf", null],
@@ -2771,6 +2792,7 @@ class World{
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             ["Leaf", "Leaf", "Leaf", "Leaf", "Leaf"],
             [null, "Leaf", "Oaklog", "Leaf", null],
+            [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
@@ -2790,6 +2812,7 @@ class World{
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
             [null,    null, "Oaklog", null, null],
+            [null,    null, "Oaklog", null, null],
         ],[
             [null, null, "Leaf", null, null],
             [null, "Leaf", "Leaf", "Leaf", null],
@@ -2801,24 +2824,23 @@ class World{
             [null,    null, "DarkOakLog", null, null],
             [null,    null, "DarkOakLog", null, null],
             [null,    null, "DarkOakLog", null, null],
+            [null,    null, "DarkOakLog", null, null],
         ]];
-        /**
-         * trees
-         */
         
-        const treeDistance = 6;
+        const trunkOffset = 2;
+        const treeDistance = 7;
         const treeDensity = 0.7;
         let treeX = x % treeDistance;
         
         if(x < 0){
-            treeX += 5;
+            treeX += treeDistance - 1;
         }
         let treeXOrigin = x - treeX;
         // x * 0.01, 0
-        const xTreeNoise = Noise.noise((treeXOrigin + 2) * 0.01)
-        const xTreeNoiseSmall = Noise.noise((treeXOrigin + 2) * 0.05)
+        const xTreeNoise = Noise.noise((treeXOrigin + trunkOffset) * 0.01)
+        const xTreeNoiseSmall = Noise.noise((treeXOrigin + trunkOffset) * 0.05)
         const treeYOrigin = Math.round(this.surfaceMin + (xTreeNoise + xTreeNoiseSmall * 0.2) * (this.surfaceMax - this.surfaceMin));
-        if(!isCave(treeXOrigin + 2, treeYOrigin)){
+        if(!isCave(treeXOrigin + trunkOffset, treeYOrigin)){
             if((Noise.noise(treeXOrigin * 1000) / 2 + 0.5) < treeDensity) {
                 let treeIndex =  Math.floor((Noise.noise(treeXOrigin, 0) / 2 + 0.5) * trees.length);
                 const tree = trees[treeIndex];
@@ -3173,7 +3195,6 @@ class World{
     }
 
     mousedown(e){
-        console.log("mousedown")
         if(e.button === Panel.RIGHT_CLICK && !this.game.activePlayer.inventory.opened){
             const cursor = this.game.cursor;
             if(cursor){
