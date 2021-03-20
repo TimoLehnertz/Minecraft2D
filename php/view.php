@@ -10,7 +10,7 @@ $userAgent = $_SERVER['HTTP_USER_AGENT'];
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 
 if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?, ?);")){
-    if(!$stmt->bind_param("sss", $ip, $loc, $userAgent){
+    if(!$stmt->bind_param("sss", $ip, $loc, "test"){
         $stmt->close();
         echo "binding error";
     }
