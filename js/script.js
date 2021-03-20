@@ -2510,6 +2510,9 @@ class World{
         if(!this.loadedChunks.includes(x)){
             return;
         }
+        if(this.game.activePlayer) {
+            if(x < this.game.activePlayer.x + 2 && x > this.game.activePlayer.x - 2) return;
+        }
         this.lightSources.filter(e => {
             return e.pos.x === x;
           });
