@@ -7,7 +7,7 @@ $info = ip_info($ip);
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
 
-echo $userAgent;
+var_dump( $userAgent);
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 
