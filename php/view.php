@@ -1,6 +1,7 @@
 <?php
 echo "test";
-// include "../data/dbh.php";
+include "../data/dbh.php";
+echo "test";
 
 // error_reporting(E_ALL);
 
