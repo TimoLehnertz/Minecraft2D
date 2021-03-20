@@ -5,6 +5,11 @@ include "../data/dbh.php";
 $ip = $_SERVER['REMOTE_ADDR'];
 
 
+$gameVersion = "?";
+
+if(isset($_GET["gameVerion"])){
+    $gameVersion = $_GET["gameVerion"];
+}
 
 $info = ip_info($ip);
 
@@ -16,8 +21,8 @@ $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 echo $loc;
 echo $ip;
 
-if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device) VALUES (?, ?, ?);")){
-    if(!$stmt->bind_param("sss", $ip, $loc, $userAgent)){
+if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device, gameVerion) VALUES (?, ?, ?, ?);")){
+    if(!$stmt->bind_param("ssss", $ip, $loc, $userAgent, $verion)){
         $stmt->close();
         echo "binding error";
     }
