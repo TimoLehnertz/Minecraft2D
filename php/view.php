@@ -16,14 +16,14 @@ $loc = $info["country"].", ".$info["state"].", ".$info["city"];
 echo $loc;
 
 if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region) VALUES (?, ?);")){
-    if(!$stmt->bind_param("ss", $ip, $loc){
-        $stmt->close();
-        echo "binding error";
-    }
-    if($stmt->execute()){
-        echo "succsess";
-    }
-    $stmt->close();
+    // if(!$stmt->bind_param("ss", $ip, $loc){
+    //     $stmt->close();
+    //     echo "binding error";
+    // }
+    // if($stmt->execute()){
+    //     echo "succsess";
+    // }
+    // $stmt->close();
 }
 
 
