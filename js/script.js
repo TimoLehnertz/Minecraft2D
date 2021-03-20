@@ -1223,15 +1223,15 @@ class Entity extends Point {
 
 class Mob extends Entity {
 
-    constructor(game, x, y, width, height, hitbox ,texture, textureMeta, setup){
-        super(x, y, width, height, texture, textureMeta, hitbox, game, 20);
+    constructor(game, x, y, width, height, hitbox ,texture, textureMeta, setup, life = 20){
+        super(x, y, width, height, texture, textureMeta, hitbox, game, life);
 
         if(!setup) {
             setup = {};
         }
 
         this.setup = setup;
-        this.walkingSpeed = setup.walkingSpeed ??0.1;
+        this.walkingSpeed = setup.walkingSpeed ?? 0.1;
         this.burnsOnSunlight = setup.burnsOnSunlight ?? false;
         this.canClimb = setup.canClimb ?? false;
         this.xp = setup.xp ?? 5;
@@ -1302,7 +1302,7 @@ class Chicken extends Mob {
             gravity: 3,
             behavior: {
                 attackType: MobController.PEACFUL,
-            }
+            }, 4
         });
     }
 
@@ -1326,7 +1326,8 @@ class Cow extends Mob {
             behavior: {
                 attackType: MobController.PEACFUL,
             }
-        });
+        },
+        10);
     }
 
     getDrops() {
