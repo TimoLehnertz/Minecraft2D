@@ -19,6 +19,7 @@ const keymap = {
     hotbar8: ["Digit8"],
     hotbar9: ["Digit9"],
     stats: ["KeyT"],
+    kill: ["KeyK"],
 };
 
 function toggleKeys(){
@@ -56,7 +57,7 @@ $(function() {
 
 class Noise {
 
-    static seed = Math.random();
+    static seed = Math.round(Math.random() * 100000);
     // static seed = Math.random();
 
     constructor(seed){
@@ -111,7 +112,7 @@ class ItemFrame extends Panel {
         // if(Math.random() < 0.4){
         //     const item = new Torch();
         //     item.stack = 20;
-        //     this.holdItem(item);
+            // this.holdItem(new CraftingTable());
         // }
         if(Math.random() < 0.4){
             // const item = new CraftingTable();
@@ -279,8 +280,8 @@ class ItemFrame extends Panel {
             const amount = Math.ceil(this.item.stack / 2);
             this.item.stack -= amount;
             const half = this.item.clone();
-            // half.width = this.item.width;
-            // half.height = this.item.height;
+            half.width = this.item.width;
+            half.height = this.item.height;
             half.stack = amount;
 
             if(this.item.stack === 0){
@@ -1200,9 +1201,10 @@ class Entity extends Point {
     }
 
     die() {
+        this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
+        if(!this.alive) return false;
         console.log("I died :/");
         this.alive = false;
-        this.game.world.entities.splice(this.game.world.entities.indexOf(this), 1);
         let drops = this.getDrops();
         if(drops) {
             if(!Array.isArray(drops)) {
@@ -1557,12 +1559,16 @@ class Player extends Entity {
         this.hunger -= this.regenHungerCost;
         super.regen();
     }
+
     
     die() {
+        if(!this.alive) return false;
+        this.alive = false;
+        this.game.clearPlayer();
         super.die();
         for (let i = 0; i < this.xp; i++) {
             if(Math.random() <0.4) {
-                const xpPoint = new XPPoint(this.x, this.y, this.game, 1000);
+                const xpPoint = new XPPoint(this.pos.x, this.pos.y, this.game, 500);
                 this.game.world.spawnEntity(xpPoint);
             }
         }
@@ -1909,10 +1915,7 @@ class Game {
     }
 
     initPlayer(player){
-        if(this.activePlayer){
-            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer.inventory), 1);
-            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer), 1);
-        }
+        this.clearPlayer();
         this.playerInfo.player = player;
         this.activePlayer = player;
         this.camera.target = player;
@@ -1966,6 +1969,9 @@ class Game {
         }
         if(keyPressed("stats", this.keyStatus)){
             this.debug = !this.debug;
+        }
+        if(keyPressed("kill", this.keyStatus)) {
+            this.activePlayer?.die();
         }
         this.camera.scale = Math.max(this.camera.minScale, Math.min(this.camera.scale, this.camera.maxScale));
     }
@@ -2103,13 +2109,22 @@ class Game {
             }
             this.drawer.fillRect(fpsStartX + i, fpsStartY - fps, 1, fps, color);
         }
-        this.drawer.text(10, 135, "player coordinates: (" + Math.round(this.activePlayer.pos.x) + "|" + Math.round(this.activePlayer.pos.y) + ")");
-        this.drawer.text(10, 155, "player speed: (" + Math.round(this.activePlayer.vel.x) + "|" + Math.round(this.activePlayer.vel.y) + ")");
-        this.drawer.text(10, 185, "Average fps: " + Math.round(avgFps));
+        /**
+         * player stuff
+         */
+        if(this.activePlayer) {
+            this.drawer.text(10, 135, "player coordinates: (" + Math.round(this.activePlayer.pos.x) + "|" + Math.round(this.activePlayer.pos.y) + ")");
+            this.drawer.text(10, 155, "player speed: (" + Math.round(this.activePlayer.vel.x) + "|" + Math.round(this.activePlayer.vel.y) + ")");
+            this.drawer.text(10, 185, "Average fps: " + Math.round(avgFps));
+        }
+        /**
+         * seed
+         */
+         this.drawer.text(10, 215, "Map seed: " + Noise.seed);
     }
 
     get cursor(){
-        if(this.mouse == undefined){
+        if(!this.mouse || !this.activePlayer){
             return null;
         }
         const center = this.activePlayer.hitbox.center;
@@ -2135,6 +2150,16 @@ class Game {
 
     spawnEntity(entity) {
         return this.world.spawnEntity(entity);
+    }
+
+    clearPlayer() {
+        if(this.activePlayer){
+            this.activePlayer.die();
+            console.log(this.inputEventListener.indexOf(this.activePlayer.inventory));
+            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer.inventory), 1);
+            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer), 1);
+            this.activePlayer = null;
+        }
     }
 
     respawnPlayer(){
@@ -3133,14 +3158,15 @@ class World{
     }
 
     mousedown(e){
+        console.log("mousedown")
         if(e.button === Panel.RIGHT_CLICK && !this.game.activePlayer.inventory.opened){
             const cursor = this.game.cursor;
             if(cursor){
                 const blocks = this.getBlock(cursor.x, cursor.y);
                 if(blocks){
                     for (const block of blocks) {
-                    if(!block) continue;
-                    block.onrightclick(this.game.activePlayer);
+                        if(!block) continue;
+                        block.onrightclick(this.game.activePlayer);
                     }
                 }
             }
