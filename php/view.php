@@ -1,5 +1,5 @@
 <?php
-echo "test";
+// echo "test";
 include "../data/dbh.php";
 
 $ip = $_SERVER['REMOTE_ADDR'];
@@ -15,19 +15,19 @@ $info = ip_info($ip);
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
 
-var_dump( $userAgent);
+// var_dump( $userAgent);
 
 $loc = $info["country"].", ".$info["state"].", ".$info["city"];
-echo $loc;
-echo $ip;
+// echo $loc;
+// echo $ip;
 
 if($stmt = $mysqli->prepare("INSERT INTO Minecraft.views(ip, region, device, gameVersion) VALUES (?, ?, ?, ?);")){
     if(!$stmt->bind_param("ssss", $ip, $loc, $userAgent, $gameVersion)){
         $stmt->close();
-        echo "binding error";
+        // echo "binding error";
     }
     if($stmt->execute()){
-        echo "succsess";
+        // echo "succsess";
     }
     $stmt->close();
 }
