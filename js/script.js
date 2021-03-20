@@ -111,14 +111,14 @@ class ItemFrame extends Panel {
         //     this.holdItem(item);
         // }
         // if(Math.random() < 0.4){
-        //     const item = new Torch();
-        //     item.stack = 20;
-            // this.holdItem(new Steak());
+        //     this.holdItem(new CraftingTable());
+        // } else {
+        //     this.holdItem(new Furnance());
         // }
-        if(Math.random() < 0.4){
-            // const item = new CraftingTable();
-            // this.holdItem(item);
-        }
+        // if(Math.random() < 0.4){
+        //     // const item = new CraftingTable();
+        //     // this.holdItem(item);
+        // }
     }
 
     draw(drawer, x = 0, y = 0, filter = ""){
@@ -672,6 +672,7 @@ class Inventory extends Panel {
         if(this.addon){
             this.addon.close();
             this.remove(this.addon);
+            this.addon = null;
         }
    }
 
@@ -1552,6 +1553,14 @@ class Player extends Entity {
         this.regenHungerCost = 0.003;
         
         this.foodProgress = 0;
+
+        /**
+         * testing
+         */
+
+        this.inventory.takeItem(new Furnance());
+        this.inventory.takeItem(new CraftingTable());
+        this.inventory.takeItem(new Stick());
     }
 
     regen() {
