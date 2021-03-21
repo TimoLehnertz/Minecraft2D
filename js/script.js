@@ -39,6 +39,13 @@ $(() => {
             */
     }
     resizeCanvas();
+
+    canvas.onblur = function() {
+        var me = this;
+        setTimeout(function() {
+            me.focus();
+        }, 100);
+    }
 });
 
 function toggleKeys(){
