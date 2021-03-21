@@ -481,9 +481,9 @@ class Block extends Item {
         this.spawnBlock = false;
     }
 
-    draw(drawer, camera, y) {
+    draw(drawer, camera, y, filter = "") {
         if(!this.placed){
-            return super.draw(drawer, camera/**(x) */, y);
+            return super.draw(drawer, camera/**(x) */, y, filter);
         }
         if(!this.visible) {
             return;

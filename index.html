@@ -32,8 +32,12 @@
     <script src="js/blocks.js"></script>
 </head>
 <body>
+    <div class="fullscreen">
+        <img class="enter" src="textures/fullscreen.png" alt="fullscreen">
+        <img class="exit hidden" src="textures/exit-fullscreen.png" alt="no-fullscreen">
+    </div>
     <!-- <h1>Minecraft</h1> -->
-    <div class="controlls">
+    <div class="controlls pc-only">
 
         <br>
         <br>
@@ -66,6 +70,13 @@
         <p>Made By Timo Lehnertz in 10 days</p>
         <button onclick="toggleKeys()">X</button>
     </div>
+
+    
+
+    <div class="move-controlls mobile-only">
+
+    </div>
+
     <canvas id="canvas" width="2000" height="2000" tabindex='1'></canvas>
 </body>
 <div class="textures" style="display: none">

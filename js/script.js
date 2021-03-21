@@ -46,7 +46,24 @@ $(() => {
             me.focus();
         }, 100);
     }
+
+    $(".fullscreen").click(() => {
+        toggleFullscreen();
+    });
+    // toggleFullscreen();
 });
+
+function toggleFullscreen() {
+    if((window.fullScreen) || (window.innerWidth == screen.width && window.innerHeight == screen.height)) {
+        $(".fullscreen .exit").addClass("hidden");
+        $(".fullscreen .enter").removeClass("hidden");
+        document.webkitExitFullscreen();
+    } else {
+        $(".fullscreen .exit").removeClass("hidden");
+        $(".fullscreen .enter").addClass("hidden");
+        document.documentElement.webkitRequestFullscreen();
+    }
+}
 
 function toggleKeys(){
     $(".controlls").toggleClass("minimized");
@@ -1176,7 +1193,7 @@ class Entity extends Point {
             filter = "brightness(" + Math.min(1, this.light) * 100 + "%)";
         }
         if(this.game.time - this.lastHit < 300){
-            filter += "  hue-rotate(80deg)";
+            filter += "  hue-rotate(180deg)";
         }
         drawer.draw(this.texture, screen.pos.x, screen.pos.y, screen.size * this.width, screen.size * this.height,
             this.textureMeta.x * tileWidth, this.textureMeta.y * tileWidth, this.textureMeta.width * tileWidth, this.textureMeta.height * tileWidth, filter);
@@ -1621,9 +1638,9 @@ class Player extends Entity {
 
     
     die() {
-        this.game.clearPlayer();
         super.die();
-        window.setTimeout(() => this.game.respawnPlayer(), 2000);
+        window.setTimeout(() => this.game.initPlayer(new Player(this.game))
+        , 2000);
     }
 
     getDrops() {
@@ -1962,18 +1979,28 @@ class Game {
 
         this.time = 0;
 
-        this.respawnPlayer();
+        this.initPlayer(new Player(this));
+
+        // this.inputEventListener.push(this.world);
+
+        this.initEventListeners();
+    }
+
+    initEventListeners() {
+        this.inputEventListener = [];
+
+        this.inputEventListener.push(this.activePlayer);
+        this.inputEventListener.push(this.activePlayer.inventory);
         this.inputEventListener.push(this.world);
     }
 
     initPlayer(player){
-        this.clearPlayer();
+        this.activePlayer = null;
         this.playerInfo.player = player;
         this.activePlayer = player;
         this.camera.target = player;
-        this.inputEventListener.push(player);
-        this.inputEventListener.push(player.inventory);
         this.world.spawnEntity(player);
+        this.initEventListeners();
     }
 
     init(){
@@ -2206,20 +2233,6 @@ class Game {
     spawnEntity(entity) {
         return this.world.spawnEntity(entity);
     }
-
-    clearPlayer() {
-        if(this.activePlayer){
-            // this.activePlayer.die();
-            console.log(this.inputEventListener.indexOf(this.activePlayer.inventory));
-            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer.inventory), 1);
-            this.inputEventListener.splice(this.inputEventListener.indexOf(this.activePlayer), 1);
-            this.activePlayer = null;
-        }
-    }
-
-    respawnPlayer(){
-        this.initPlayer(new Player(this));
-    }
 }
 
 class Camera extends Point {
@@ -2333,7 +2346,7 @@ class MobController extends Controller {
             this.aggressive = this.entity.life < this.entity.maxLife;
         }
         if(this.attackType === MobController.AGGRESSIVE_ALWAYS_ATTACK_EXEPT_DAYLIGHT) {
-            this.aggressive = this.entity.life < this.entity.maxLife || this.entity.daylight < 0.9;
+            this.aggressive = this.entity.life < this.entity.maxLife || this.entity.dayLight < 0.9;
         }
         if(this.aggressive) {
             const enemies = this.entity.getEntitiesInRadius(this.activationRange);
@@ -2468,8 +2481,8 @@ class World{
         /**
          * testing
          */
-        // const zombie = new Spider(this.game, 0, 120);
-        // this.entities.push(zombie);
+        const zombie = new Spider(this.game, 0, 120);
+        this.entities.push(zombie);
     }
 
     loadChunks(fromX, toX, fromY = this.height, toY = 0){
@@ -3230,7 +3243,7 @@ class World{
     }
 
     mousedown(e){
-        if(e.button === Panel.RIGHT_CLICK && !this.game.activePlayer.inventory.opened){
+        if(e.button === Panel.RIGHT_CLICK && !this.game.activePlayer?.inventory?.opened) {
             const cursor = this.game.cursor;
             if(cursor){
                 const blocks = this.getBlock(cursor.x, cursor.y);
