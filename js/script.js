@@ -23,7 +23,16 @@ const keymap = {
     switchTextures: ["KeyT"],
 };
 
+function isMobile(){
+    let check = false;
+    (function(a){if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0,4))) check = true;})(navigator.userAgent||navigator.vendor||window.opera);
+    return check;
+};
+
 $(() => {
+    /**
+     * rescaling
+     */
     var canvas = document.getElementById('canvas'),
     context = canvas.getContext('2d');
     // resize the canvas to fill browser window dynamically
@@ -32,14 +41,12 @@ $(() => {
     function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-
-            /**
-             * Your drawings need to be inside this function otherwise they will be reset when 
-             * you resize the browser window and the canvas goes will be cleared.
-            */
     }
     resizeCanvas();
 
+    /**
+     * focusing
+     */
     canvas.onblur = function() {
         var me = this;
         setTimeout(function() {
@@ -47,23 +54,31 @@ $(() => {
         }, 100);
     }
 
+    /**
+     * fullscreen
+     */
     $(".fullscreen").click(() => {
         toggleFullscreen();
     });
-    // toggleFullscreen();
-});
-
-function toggleFullscreen() {
-    if((window.fullScreen) || (window.innerWidth == screen.width && window.innerHeight == screen.height)) {
-        $(".fullscreen .exit").addClass("hidden");
-        $(".fullscreen .enter").removeClass("hidden");
-        document.webkitExitFullscreen();
-    } else {
-        $(".fullscreen .exit").removeClass("hidden");
-        $(".fullscreen .enter").addClass("hidden");
-        document.documentElement.webkitRequestFullscreen();
+    function toggleFullscreen() {
+        if((window.fullScreen) || (window.innerWidth == screen.width && window.innerHeight == screen.height)) {
+            $(".fullscreen .exit").addClass("hidden");
+            $(".fullscreen .enter").removeClass("hidden");
+            document.webkitExitFullscreen();
+        } else {
+            $(".fullscreen .exit").removeClass("hidden");
+            $(".fullscreen .enter").addClass("hidden");
+            document.documentElement.webkitRequestFullscreen();
+        }
     }
-}
+
+    /**
+     * start
+     */
+     const drawer = new Drawer($("#canvas"), $(".textures"));
+     game = new Game(drawer);
+     $('canvas').bind('contextmenu', e => false);
+});
 
 function toggleKeys(){
     $(".controlls").toggleClass("minimized");
@@ -79,24 +94,8 @@ function keyPressed(name, keyStatus){
     return pressed;
 }
 
-$(function() {
+let game = null;
 
-    // console.log(    0      /   1 -             10 /          1);
-    // console.log(box.top /    vel.y -    this.bottom /   vel.y);
-
-    const a = new Hitbox(0, 51.5, 1, 2);
-    const b = new Hitbox(0, 50,   1, 1);
-
-
-    const drawer = new Drawer($("#canvas"), $(".textures"));
-
-
-    window.setTimeout(() => {
-        const game = new Game(drawer);
-    }, 100);
-
-    $('canvas').bind('contextmenu', e => false);
-});
 
 class Noise {
 
@@ -132,36 +131,6 @@ class ItemFrame extends Panel {
         this.onchange = () => false;
         this.ontake = () => false;
         this.filterItems = (item) => true;
-
-        // if(Math.random() < 0.1){
-        //     this.holdItem(new DiamondPickaxe());
-        // }
-        // if(Math.random() < 0.1){
-        //     this.holdItem(new DiamondAxe());
-        // }
-
-        // if(Math.random() > 0.9){
-        //     this.holdItem(new DiamondShovel());
-        //     // this.item.stack = 20
-        // }
-        // if(Math.random() < 0.1){
-        //     this.holdItem(new Cobblestone());
-        //     this.item.stack = 64;
-        // }
-        // if(Math.random() < 0.1){
-        //     const item = new OakLog();
-        //     item.stack = 20;
-        //     this.holdItem(item);
-        // }
-        // if(Math.random() < 0.4){
-        //     this.holdItem(new CraftingTable());
-        // } else {
-        //     this.holdItem(new Furnance());
-        // }
-        // if(Math.random() < 0.4){
-        //     // const item = new CraftingTable();
-        //     // this.holdItem(item);
-        // }
     }
 
     draw(drawer, x = 0, y = 0, filter = ""){
@@ -1596,7 +1565,7 @@ class Player extends Entity {
     constructor(game, x = 5, y = 120, texture = "steve",  hitbox = new Hitbox(0.1, 0, 0.8, 1.8)){
         super(x, y, 0.9, 1.8, texture, textureAtlasMap.steve, hitbox, game, 20, true, true);
         this.vel.y = -1000;
-        this.controller = new KeyboardController(this);
+        this.controller = new KeyboardController(this, isMobile());
         this.leftMouseDown = false;
         this.rightMouseDown = false;
         this.isPlayer = true;
@@ -2016,6 +1985,68 @@ class Game {
         $(this.drawer.ctx.canvas).mousedown((e) => {this.mousedown(e)});
         $(this.drawer.ctx.canvas).mouseup((e) => {this.mouseup(e)});
         $(this.drawer.ctx.canvas).on("wheel", (e) => {this.wheel(e)});
+
+        /**
+         * mobile controll
+         */
+        $(this.drawer.ctx.canvas).on("touchstart", (e) => {
+             e.preventDefault();
+             this.mousedown({
+                 originalEvent: {
+                     button: Panel.LEFT_CLICK
+                 }
+             });
+        });
+        $(this.drawer.ctx.canvas).on("touchend", (e) => {
+            e.preventDefault();
+            this.mouseup({
+                originalEvent: {
+                    button: Panel.LEFT_CLICK
+                }
+            });
+       });
+       $(this.drawer.ctx.canvas).on("touchmove", (e) => {
+        e.preventDefault();
+        console.log();
+        const screenX = e.targetTouches[0].pageX;
+        const screenY = e.targetTouches[0].pageY;
+        this.mousemove({
+            originalEvent: {
+                offsetX: screenX,
+                offsetY: screenY,
+            }
+        });
+    });
+        $(".move-controlls .arrow-left").on("touchstart", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["left"][0]] = true;
+            this.keydown();
+        });
+        $(".move-controlls .arrow-left").on("touchend", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["left"][0]] = false;
+            this.keydown();
+        });
+        $(".move-controlls .arrow-right").on("touchstart", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["right"][0]] = true;
+            this.keydown();
+        });
+        $(".move-controlls .arrow-right").on("touchend", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["right"][0]] = false;
+            this.keydown();
+        });
+        $(".move-controlls .jumb").on("touchstart", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["jumb"][0]] = true;
+            this.keydown();
+        });
+        $(".move-controlls .jumb").on("touchend", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["jumb"][0]] = false;
+            this.keydown();
+        });
     }
 
     callInputEvent(name, event){
@@ -2037,7 +2068,9 @@ class Game {
     }
 
     keydown(e){
-        this.keyStatus[e.code] = true;
+        if(e) {
+            this.keyStatus[e.code] = true;
+        }
         this.callInputEvent("keydown", e);
 
         if(keyPressed("zoomOut", this.keyStatus)){
@@ -2249,6 +2282,7 @@ class Camera extends Point {
         this.maxScale = 25;
         this.vel = new Point();
         this.target = target;
+        this.screen = {width: 1000, height: 1000};// mock
     }
 
     get mostLeftBlock() {
@@ -2390,8 +2424,9 @@ class MobController extends Controller {
 
 class KeyboardController extends Controller {
 
-    constructor(entity){
+    constructor(entity, autoJumb = false){
         super(entity);
+        this.autoJumb = autoJumb;
     }
 
     tick(elapsed, keys, game){
@@ -2402,10 +2437,10 @@ class KeyboardController extends Controller {
             return;
         }
         if(keyPressed("left", keys)){
-            this.entity.walkLeft();
+            this.entity.walkLeft(this.autoJumb);
         }
         if(keyPressed("right", keys)){
-            this.entity.walkRight();
+            this.entity.walkRight(this.autoJumb);
         }
         if(!keyPressed("right", keys) && this.entity.vel.x > 0 && this.entity.isGrounded) {
             this.entity.vel.multiply(new Point(0.8, 1));
