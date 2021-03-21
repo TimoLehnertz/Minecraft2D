@@ -23,6 +23,24 @@ const keymap = {
     switchTextures: ["KeyT"],
 };
 
+$(() => {
+    var canvas = document.getElementById('canvas'),
+    context = canvas.getContext('2d');
+    // resize the canvas to fill browser window dynamically
+    window.addEventListener('resize', resizeCanvas, false);
+
+    function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            /**
+             * Your drawings need to be inside this function otherwise they will be reset when 
+             * you resize the browser window and the canvas goes will be cleared.
+            */
+    }
+    resizeCanvas();
+});
+
 function toggleKeys(){
     $(".controlls").toggleClass("minimized");
 }
@@ -1148,7 +1166,7 @@ class Entity extends Point {
         const screen = camera.worldToScreen(this.pos, drawer.screen);
         let filter;
         if(this.light < 1){
-            filter = "brightness(" + Math.min(1, this.light + 0.1) * 100 + "%)";
+            filter = "brightness(" + Math.min(1, this.light) * 100 + "%)";
         }
         if(this.game.time - this.lastHit < 300){
             filter += "  hue-rotate(80deg)";
@@ -2432,12 +2450,13 @@ class World{
         this.loadedToX = 0;
         this.lastFromX = 0;
         this.lastTo = 0;
-        this.blockBuffer = 1;//buffer of chunks to left and right from the screen
-        this.maxLoadedColumns = 100; //older chunks will get deleted when this number gets exeeded
+        this.blockBuffer = 5;//buffer of chunks to left and right from the screen
+        this.maxLoadedPlayerDistance = 200; //older chunks will get deleted when this number gets exeeded
         this.lastLoadedChunk = undefined;
         this.idChunk = 0;
         this.surfaceMin = 60;
         this.surfaceMax = 90;
+        this.minLight = 0.02;
 
         /**
          * testing
@@ -2528,8 +2547,17 @@ class World{
     }
 
     cleanChunks(){
-        if(this.loadedChunks.length > this.maxLoadedColumns){
-            this.unloadChunk(this.loadedChunks[0]);
+        let playerX = 0;
+        if(this.game.activePlayer) {
+            playerX = this.game.activePlayer.pos.x;
+        }
+        if(this.loadedChunks.length > this.maxLoadedPlayerDistance * 2){
+            for (const columnX of this.loadedChunks) {
+                if(!columnX) continue;
+                if(columnX < playerX - this.maxLoadedPlayerDistance || columnX > playerX + this.maxLoadedPlayerDistance){
+                    this.unloadChunk(columnX);
+                }
+            }
         }
     }
 
@@ -2730,7 +2758,7 @@ class World{
     }
 
     sunLightAt(surfaceLevel, y){
-        return Math.max(0.05, Math.min(1, (surfaceLevel - y) / -5 + 1)); 
+        return Math.max(this.minLight, Math.min(1, (surfaceLevel - y) / -7 + 1)); 
     }
 
     surfaceLevelAt(x){

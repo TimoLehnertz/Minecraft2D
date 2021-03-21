@@ -250,7 +250,6 @@ class Drawer{
     constructor(canvas, textureRoot = $()){
         this.canvas = canvas;
         this.ctx = $(canvas)[0].getContext("2d");
-        this.ctx.imageSmoothingEnabled = false;
         this.loadImages(textureRoot);
         // this.draw();
     }
@@ -299,6 +298,15 @@ class Drawer{
     }
 
     draw(texture, x, y, width, height, tx = 0, ty = 0, twidth = 16, theight = 16, filter = "", brightness = 1){
+        
+        x = Math.round(x);
+        y = Math.round(y);
+        width = Math.round(width);
+        height = Math.round(height);
+        
+        this.ctx.webkitImageSmoothingEnabled = false;
+        this.ctx.mozImageSmoothingEnabled = false;
+        this.ctx.imageSmoothingEnabled = false;
         if(typeof texture === "object"){
             texture = texture.texture;
         }
@@ -326,10 +334,10 @@ class Drawer{
         //     this.ctx.translate(-(x + width / 2), -(y + height / 2));
         // } else{
             try {
-                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width, height);
+                this.ctx.drawImage(this.textures[texture], tx, ty, twidth, theight, x, y, width + 1, height + 1);
             } catch (error) {
                 // console.log(texture);
-                // console.log(error);
+                console.log(error);
 
             }
             this.ctx.filter = "none";
@@ -338,7 +346,7 @@ class Drawer{
                 // brightness = Math.round(brightness * 16);
                 // console.log(brightness.toString(16))
                 // this.fillRect(x, y, width, height, "#000" + brightness.toString(16))
-                this.fillRect(x, y, width, height + 0.6, "rgba(10, 10, 10," + (brightness) + ")")
+                this.fillRect(x, y, width + 1, height + 1, "rgba(0, 0, 0," + (brightness) + ")")
             }
         // }
     }
