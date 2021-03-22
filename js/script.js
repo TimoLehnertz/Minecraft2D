@@ -1587,14 +1587,23 @@ class Player extends Entity {
          * testing
          */
 
-        // this.inventory.takeItem(new Furnance());
-        // this.inventory.takeItem(new CraftingTable());
-        // this.inventory.takeItem(new Stick());
-        // this.inventory.takeItem(new Stick());
-        // this.inventory.takeItem(new DarkOakPlank());
-        // this.inventory.takeItem(new DarkOakPlank());
-        // this.inventory.takeItem(new DarkOakPlank());
-        // this.inventory.takeItem(new DarkOakPlank());
+        this.inventory.takeItem(new Furnance());
+        this.inventory.takeItem(new CraftingTable());
+        this.inventory.takeItem(new Stick());1
+        this.inventory.takeItem(new Stick());
+        this.inventory.takeItem(new DarkOakPlank());
+        this.inventory.takeItem(new DarkOakPlank());
+        this.inventory.takeItem(new DarkOakPlank());
+        this.inventory.takeItem(new DarkOakPlank());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new Torch());
+        this.inventory.takeItem(new DiamondPickaxe());
     }
 
     regen() {
