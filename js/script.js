@@ -222,8 +222,7 @@ class ItemFrame extends Panel {
             } else {
                 if(this.item){
                     const amount = this.item.stack;
-                    console.log("1");
-                    window.setTimeout(() => {this.ontake(amount); console.log("30");}, 0)
+                    window.setTimeout(() => {this.ontake(amount)}, 0)
                 }
                 const returnItem = this.item;
                 this.holdItem(null);
@@ -627,6 +626,20 @@ class Inventory extends Panel {
 
         this.hotbar.children[0].active = true;
         this.entity.holdItem(this.hotbar.children[0].item);
+
+        /**
+         * mobile
+         */
+        // if(isMobile()) {
+            for (let i = 0; i < this.hotbar.children.length; i++) {
+                const frame = this.hotbar.children[i];
+                frame.click(() => {
+                    if(!isMobile()) return;
+                    this.setActiveHotbar(i);
+                    return false;
+                });
+            // }
+        }
 
         Inventory.allInventories.push(this);
     }
@@ -1999,7 +2012,17 @@ class Game {
          * mobile controll
          */
         $(this.drawer.ctx.canvas).on("touchstart", (e) => {
-             e.preventDefault();
+            e.preventDefault();
+            const screenX = e.targetTouches[0].pageX;
+            const screenY = e.targetTouches[0].pageY;
+            this.mousemove({
+                originalEvent: {
+                    offsetX: screenX,
+                    offsetY: screenY,
+                },
+                offsetX: screenX,
+                offsetY: screenY,
+            });
              this.mousedown({
                  originalEvent: {
                      button: Panel.LEFT_CLICK
@@ -2011,19 +2034,22 @@ class Game {
             this.mouseup({
                 originalEvent: {
                     button: Panel.LEFT_CLICK
-                }
+                },
+                offsetX: screenX,
+                offsetY: screenY,
             });
        });
        $(this.drawer.ctx.canvas).on("touchmove", (e) => {
         e.preventDefault();
-        console.log();
         const screenX = e.targetTouches[0].pageX;
         const screenY = e.targetTouches[0].pageY;
         this.mousemove({
             originalEvent: {
                 offsetX: screenX,
                 offsetY: screenY,
-            }
+            },
+            offsetX: screenX,
+            offsetY: screenY,
         });
     });
         $(".move-controlls .arrow-left").on("touchstart", (e) => {
@@ -2056,16 +2082,22 @@ class Game {
             this.keyStatus[keymap["jumb"][0]] = false;
             this.keydown();
         });
+        $(".other-controlls .toggle-inventory").on("touchend", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["openInventory"][0]] = true;
+            this.keydown();
+            this.keyStatus[keymap["openInventory"][0]] = false;
+        });
     }
 
     callInputEvent(name, event){
         for (const listener of this.inputEventListener) {
             let redirect = false;
-            if(name + "1" in listener){
+            if(name + "1" in listener) {
                 redirect = listener[name + "1"](event, this.keyStatus);
             }
             if(!redirect){
-                if(name in listener){
+                if(name in listener) {
                     redirect = listener[name](event, this.keyStatus);
                 }
             }
@@ -2253,14 +2285,16 @@ class Game {
         }
         const center = this.activePlayer.hitbox.center;
         const mouse = this.camera.screenToWorld(new Point(this.mouseX, this.mouseY), this.drawer.screen);
-        let distance = mouse.distanceFrom(center);
-        // distance = Math.min(this.playerReach, distance);
-        if(distance > this.playerReach){
-            // console.log("max")
-            return null;
+        let testRange = this.playerReach;
+        const step = 0.5;
+        while(testRange > 0) {
+            const cursor = center.toMax(mouse, testRange)
+            if(this.world.canBlockBeAccesed(cursor.x, cursor.y)) {
+                return cursor;
+            }
+            testRange -= step;
         }
-        // const coords = center.add(new Point(distance, distance).multiply(mouse.subtract(center).uniform));
-        return mouse;
+        return null;
     }
 
     buildBlock(block){
@@ -2268,7 +2302,6 @@ class Game {
         if(!block || !block.canBePlaced || !cursor){
             return false;
         }
-        // console.log("1")
         return this.world.buildBlock(block, cursor.x, cursor.y);
     }
 
@@ -2807,7 +2840,7 @@ class World{
         && !(a?.[layer]?.solid && b?.[layer]?.solid && c?.[layer]?.solid && d?.[layer]?.solid) && !self?.[0];
     }
 
-    canBlockBeAccesed(x, y, layer){
+    canBlockBeAccesed(x, y, layer = 0){
         const reverseLayer = layer === 0 ? 1 : 1;
         const self = this.getBlock(x, y);
         const a = this.getBlock(x - 1, y);

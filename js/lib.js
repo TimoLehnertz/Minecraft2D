@@ -13,6 +13,16 @@ class Point{
         this.y = pos.y;
     }
 
+    toMax(to, maxDistance) {
+        const distance = this.distanceFrom(to);
+        if(distance <= maxDistance) {
+            return to;
+        }
+        let dir = to.clone().subtract(this);
+        dir = dir.uniform.multiply(new Point(maxDistance, maxDistance));
+        return this.clone().add(dir);
+    }
+
     set(pos){
         this.pos = pos;
     }
@@ -88,6 +98,10 @@ class Panel {
         this.mouseInside = false;
     }
 
+    click(func) {
+        this.clickCallback = func;
+    }
+
     callEvent(name, event, payload){
         // console.log(this.children)
         for (const child of this.children) {
@@ -152,6 +166,9 @@ class Panel {
         if(this.mouseInside){
             if("mouseup" in this){
                 this.mouseup(e, this.parseMouse(e));
+            }
+            if(this.clickCallback) {
+                this.clickCallback(e);
             }
         }
         return true;
