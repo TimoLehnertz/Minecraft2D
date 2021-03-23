@@ -15,7 +15,7 @@ if(isset($_GET["set"]) && isset($_GET["value"])){
     file_put_contents('get.html', $_GET["value"]);
 }
 
-echo "content: ".echo file_get_contents('get.html');
+echo "content: ".file_get_contents('get.html');
 ?>
 
 <hr>
