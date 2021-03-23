@@ -60,15 +60,29 @@ $(() => {
     $(".fullscreen").click(() => {
         toggleFullscreen();
     });
+    // document.webkitExitFullscreen();
     function toggleFullscreen() {
         if((window.fullScreen) || (window.innerWidth == screen.width && window.innerHeight == screen.height)) {
             $(".fullscreen .exit").addClass("hidden");
             $(".fullscreen .enter").removeClass("hidden");
-            document.webkitExitFullscreen();
+
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+
+            if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
         } else {
             $(".fullscreen .exit").removeClass("hidden");
             $(".fullscreen .enter").addClass("hidden");
-            document.documentElement.webkitRequestFullscreen();
+
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            }
+            if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            }
         }
     }
 
@@ -572,6 +586,7 @@ class Inventory extends Panel {
          */
         this.width = 600;
         this.height = 600;
+        this.maxHeight = 600;
         this.padding = 20;
         this.centered = true;
         this.color = "#AAAD";
@@ -683,6 +698,7 @@ class Inventory extends Panel {
             this.craftingFrame.visible = true;
             this.craftingFrame.size = 2;
         }
+        $(".move-controlls").addClass("hidden");
         this.opened = true;
    }
 
@@ -708,6 +724,7 @@ class Inventory extends Panel {
         this.grabbedItem = null;
         this.craftingFrame.dropItems();
         this.detatchAddon();
+        $(".move-controlls").removeClass("hidden");
    }
 
    toggle(){
@@ -720,6 +737,11 @@ class Inventory extends Panel {
 
     draw(drawer){
         this.visible = this.opened;
+
+        if(isMobile()) {
+            
+        }
+        // console.log(drawer.screen);
 
         if(this.opened){
             if(this.grabbedItem && this.mouse !== undefined){
@@ -2023,14 +2045,16 @@ class Game {
                 offsetX: screenX,
                 offsetY: screenY,
             });
-             this.mousedown({
-                 originalEvent: {
-                     button: Panel.LEFT_CLICK
-                 }
-             });
+            this.mousedown({
+                originalEvent: {
+                    button: Panel.LEFT_CLICK
+                }
+            });
         });
         $(this.drawer.ctx.canvas).on("touchend", (e) => {
             e.preventDefault();
+            const screenX = e.targetTouches[0].pageX;
+            const screenY = e.targetTouches[0].pageY;
             this.mouseup({
                 originalEvent: {
                     button: Panel.LEFT_CLICK
@@ -2038,6 +2062,18 @@ class Game {
                 offsetX: screenX,
                 offsetY: screenY,
             });
+            // this.mouseup({
+            //     originalEvent: {
+            //         button: Panel.LEFT_CLICK
+            //     }
+            // });
+            // this.mouseup({
+            //     originalEvent: {
+            //         button: Panel.RIGHT_CLICK
+            //     },
+            //     offsetX: screenX,
+            //     offsetY: screenY,
+            // });
        });
        $(this.drawer.ctx.canvas).on("touchmove", (e) => {
         e.preventDefault();
@@ -2087,6 +2123,12 @@ class Game {
             this.keyStatus[keymap["openInventory"][0]] = true;
             this.keydown();
             this.keyStatus[keymap["openInventory"][0]] = false;
+        });
+        $(".other-controlls .toggle-debug").on("touchend", (e) => {
+            e.preventDefault();
+            this.keyStatus[keymap["stats"][0]] = true;
+            this.keydown();
+            this.keyStatus[keymap["stats"][0]] = false;
         });
     }
 

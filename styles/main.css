@@ -67,7 +67,7 @@ button {
 .move-controlls {
   position: absolute;
   left: 1rem;
-  bottom: 11rem;
+  bottom: 9rem;
 }
 
 .move-controlls div {
@@ -83,8 +83,8 @@ button {
 
 .other-controlls {
   position: absolute;
-  right: 15rem;
-  bottom: 13rem;
+  left: 1rem;
+  bottom: 1rem;
 }
 
 .other-controlls div {
@@ -113,6 +113,10 @@ button {
 .fullscreen:hover {
   border: 1px solid #0004;
   background: #3333;
+}
+
+.absolute {
+  position: absolute;
 }
 
 @media (hover: hover) {

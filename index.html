@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=1000, initial-scale=0.3, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, max-scale=0.5, user-scalable=0">
     <!-- <meta name="viewport" content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0'> -->
     <title>Minecraft 2D</title>
 
@@ -15,7 +15,7 @@
     
     <link href="/php/view.php?gameVerion=1.0" rel="stylesheet">
 
-    <link href="styles/main.css" rel="stylesheet">
+    <link href="styles/main.css?version=1" rel="stylesheet">
 
     <!-- noise -->
     <!-- <script src="https://cdn.rawgit.com/jwagner/simplex-noise.js/87440528bcf8ec89840e974d8f76cfe3da548c37/simplex-noise.min.js"></script> -->
@@ -33,7 +33,7 @@
     <script src="js/script.js"></script>
     <script src="js/blocks.js"></script>
 </head>
-<body>
+<body id="body">
     <div class="fullscreen">
         <img class="enter" src="textures/fullscreen.png" alt="fullscreen">
         <img class="exit hidden" src="textures/exit-fullscreen.png" alt="no-fullscreen">
@@ -85,6 +85,12 @@
     </div>
     <div class="other-controlls">
         <div class="toggle-inventory">
+            <img src="textures/controlls/inventory.png" alt="Inventory">
+        </div>
+        <div class="toggle-debug">
+            <div class="absolute">
+                <img src="textures/controlls/bug.png" alt="debug">
+            </div>
             <img src="textures/controlls/inventory.png" alt="Inventory">
         </div>
     </div>
