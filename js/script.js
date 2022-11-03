@@ -113,17 +113,17 @@ let game = null;
 
 class Noise {
 
-    static seed = Math.round(Math.random() * 100000);
+    // static seed = Math.round(Math.random() * 100000);
     // static seed = 87046;
     // static seed = Math.random();
 
-    constructor(seed){
-        this.seed = seed
+    constructor(seed) {
+        this.seed = seed;
         // this.simplex = 
     }
 
-    static noise(x, y = 0){
-        noise.seed(Noise.seed);
+    static noise(x, y = 0) {
+        noise.seed(this.seed);
         return noise.simplex2(x, y);
     }
 }
@@ -1978,6 +1978,10 @@ class Game {
 
     constructor(drawer, camera = new Camera()) {
         this.world = new World(this);
+        // this.world.loadFromStorage(0);
+        // window.setInterval(() => {
+        //     this.world.saveToStorage(0);
+        // }, 1000);
         this.drawer = drawer;
         this.camera = camera;
         this.lastUpdate = 0;
@@ -2571,28 +2575,21 @@ class DroppedItemController extends Controller {
 
 class World{
 
-    constructor(game, width = 10000, height = 256, seed = 1){
+    constructor(game, seed = 1){
         this.game = game;
         this.entities = [];// everything wich is not a block
         this.changedBlocks = [];
-        this.width = width;
-        this.height = height;
+        this.width = 10000;
+        this.height = 256;
+        this.seed = seed;
         this.noise = new Noise(seed);
 
         /**
          * chunks
          */
-        this.chunks = [];
-        this.loadedChunks = [];
-        this.lightSources = []
-        this.loadedFrom = 0;
-        this.loadedToX = 0;
-        this.lastFromX = 0;
-        this.lastTo = 0;
         this.blockBuffer = 5;//buffer of chunks to left and right from the screen
         this.maxLoadedPlayerDistance = 200; //older chunks will get deleted when this number gets exeeded
         this.lastLoadedChunk = undefined;
-        this.idChunk = 0;
         this.surfaceMin = 60;
         this.surfaceMax = 90;
         this.minLight = 0.02;
@@ -2600,8 +2597,78 @@ class World{
         /**
          * testing
          */
-        const zombie = new Spider(this.game, 0, 120);
-        this.entities.push(zombie);
+        // const zombie = new Spider(this.game, 0, 120);
+        // this.entities.push(zombie);
+        this.reload();
+    }
+
+    reload() {
+        this.chunks = [];
+        this.loadedChunks = [];
+        this.lightSources = [];
+        this.lastLoadedChunk = undefined;
+        this.loadedFrom = 0;
+        this.loadedToX = 0;
+        this.lastFromX = 0;
+        this.lastTo = 0;
+        this.idChunk = 0;
+    }
+
+    saveToStorage(index) {
+        let savedWorlds = localStorage.getItem('minecraft2dWorlds');
+        if(!savedWorlds || !this.isJson(savedWorlds)) {
+            savedWorlds = [];
+        } else {
+            savedWorlds = JSON.parse(savedWorlds);
+        }
+        savedWorlds[index] = this.world;
+        // savedWorlds = [];
+        localStorage.setItem('minecraft2dWorlds', JSON.stringify(savedWorlds));
+        console.log("saved world", savedWorlds[index]);
+    }
+
+    isJson(str) {
+        try {
+            JSON.parse(str);
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
+    loadFromStorage(index) {
+        let savedWorlds = localStorage.getItem('minecraft2dWorlds');
+        if(!savedWorlds || !this.isJson(savedWorlds)) {
+            savedWorlds = [];
+        } else {
+            savedWorlds = JSON.parse(savedWorlds);
+        }
+        console.log(savedWorlds);
+        if(!savedWorlds?.[index]) return console.log("no worlds saved yet");
+        // this.entities = savedWorlds[index].entities;
+        // this.changedBlocks = savedWorlds[index].changedBlocks;
+        this.seed = savedWorlds[index].seed;
+
+        console.log("loaded world. Seed: ", savedWorlds[index].seed);
+    }
+
+    get world() {
+        const changedBlocks = [];
+        for (const index in this.changedBlocks) {
+            const x = World.indexToX(index);
+            for (const y in this.changedBlocks[index]) {
+                changedBlocks.push({
+                    x,y,content: this.changedBlocks[index][y]
+                });
+            }
+            // console.log(this.changedBlocks.indexOf(yList));
+        }
+        // return {};
+        return {
+            // entities: this.entities,
+            changedBlocks: changedBlocks,
+            seed: this.seed
+        }
     }
 
     loadChunks(fromX, toX, fromY = this.height, toY = 0){
@@ -2726,9 +2793,14 @@ class World{
     static xToIndex(x){
         if(x >= 0){
             return x * 2;
-        } else{
+        } else {
             return x * -2 - 1;
         }
+    }
+
+    static indexToX(index) {
+        if(index % 2 == 0) return index / 2;
+        return (index - 1) / -2
     }
 
     blockLoaded(x){

@@ -267,7 +267,7 @@ class Item extends Panel {
     static EFFICIENCY_GOLD = 3;
     static EFFICIENCY_DIAMOND = 4;
 
-    constructor(name, texture, textureMeta, type, setup){
+    constructor(name, texture, textureMeta, type, setup) {
         super(0, 0, 20, 20);
         setup = setup ?? {};
         this.setup = setup;
@@ -290,6 +290,15 @@ class Item extends Panel {
         this.dropped = false;
         this.padding = 4;
         this.placed = false;
+    }
+
+    
+
+    get serializedObject() {
+        return {
+            name: this.name,
+            isBlock: this.isBlock ? true : false,
+        }
     }
 
     draw(drawer, x, y, filter = ""){
@@ -433,7 +442,7 @@ class Block extends Item {
 
     // static BLOCK_COUNT = 0;
 
-    constructor(name, x, y, texture, textureMeta, type, world, setup, itemSetup){
+    constructor(name, x, y, texture, textureMeta, type, world, setup, itemSetup) {
         super(name, texture, textureMeta, type, itemSetup);
         // console.log("constructor of block: " + Block.BLOCK_COUNT);
         // Block.BLOCK_COUNT++;

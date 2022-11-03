@@ -75,8 +75,6 @@ class Noise {
 class ItemFrame extends Panel {
 
     constructor(x = 0, y = 0, width = 100, height = 100, inventory, isAddon = false, color = "#777"){
-        // console.log(inventory)
-        // if(inventory === un)
         super(x, y, width, height, color);
         this.isAddon = isAddon;
         this.inventory = inventory;
@@ -89,44 +87,14 @@ class ItemFrame extends Panel {
         this.onchange = () => false;
         this.ontake = () => false;
         this.filterItems = (item) => true;
-
-        // if(Math.random() < 0.1){
-        //     this.holdItem(new DiamondPickaxe());
-        // }
-        // if(Math.random() < 0.1){
-        //     this.holdItem(new DiamondAxe());
-        // }
-
-        // if(Math.random() > 0.9){
-        //     this.holdItem(new DiamondShovel());
-        //     // this.item.stack = 20
-        // }
-        // if(Math.random() < 0.1){
-        //     this.holdItem(new Cobblestone());
-        //     this.item.stack = 64;
-        // }
-        // if(Math.random() < 0.1){
-        //     const item = new OakLog();
-        //     item.stack = 20;
-        //     this.holdItem(item);
-        // }
-        // if(Math.random() < 0.4){
-        //     this.holdItem(new CraftingTable());
-        // } else {
-        //     this.holdItem(new Furnance());
-        // }
-        // if(Math.random() < 0.4){
-        //     // const item = new CraftingTable();
-        //     // this.holdItem(item);
-        // }
     }
 
-    draw(drawer, x = 0, y = 0, filter = ""){
+    draw(drawer, x = 0, y = 0, filter = "") {
         if(this.item){
             this.item.width = this.width;
             this.item.height = this.height;
         }
-        if(this.mouseInside && this.inventory.opened){
+        if(this.mouseInside && this.inventory.opened) {
             this.color = "#555"
         } else{
             this.color = this.standartColor;
@@ -881,7 +849,6 @@ class Inventory extends Panel {
 }
 
 class Entity extends Point {
-
     constructor(x, y, width, height, texture, textureMeta, hitbox, game, life = 0, visible = true, hasInventory = false){
         super(x, y);
         this.vel = new Point(0, 0);
@@ -1908,6 +1875,11 @@ class Game {
 
     constructor(drawer, camera = new Camera()) {
         this.world = new World(this);
+        this.world.loadFromStorage(0);
+        window.setInterval(() => {
+            console.log("moin")
+            this.world.saveToStorage(0);
+        }, 1000);
         this.drawer = drawer;
         this.camera = camera;
         this.lastUpdate = 0;
@@ -2394,38 +2366,78 @@ class DroppedItemController extends Controller {
     }
 }
 
-class World{
+function getWorldFromStorage() {
+    
+}
 
-    constructor(game, width = 10000, height = 256, seed = 1){
+class World {
+    constructor(game, seed = 0) {
         this.game = game;
         this.entities = [];// everything wich is not a block
         this.changedBlocks = [];
-        this.width = width;
-        this.height = height;
+        this.width = 10000;
+        this.height = 256;
+        this.seed = seed;
         this.noise = new Noise(seed);
 
         /**
          * chunks
          */
-        this.chunks = [];
-        this.loadedChunks = [];
-        this.lightSources = []
-        this.loadedFrom = 0;
-        this.loadedToX = 0;
-        this.lastFromX = 0;
-        this.lastTo = 0;
         this.blockBuffer = 1;//buffer of chunks to left and right from the screen
         this.maxLoadedColumns = 100; //older chunks will get deleted when this number gets exeeded
-        this.lastLoadedChunk = undefined;
-        this.idChunk = 0;
         this.surfaceMin = 60;
         this.surfaceMax = 90;
+        reload();
 
         /**
          * testing
          */
         // const zombie = new Spider(this.game, 0, 120);
         // this.entities.push(zombie);
+    }
+
+    reload() {
+        this.chunks = [];
+        this.loadedChunks = [];
+        this.lightSources = [];
+        this.lastLoadedChunk = undefined;
+        this.loadedFrom = 0;
+        this.loadedToX = 0;
+        this.lastFromX = 0;
+        this.lastTo = 0;
+        this.idChunk = 0;
+    }
+
+    saveToStorage(index) {
+        console.log(index)
+        const savedWorlds = localStorage.getItem('minecraft2dWorlds');
+        if(!savedWorlds) {
+            savedWorlds = [];
+        } else {
+            savedWorlds = JSON.parse(savedWorlds);
+        }
+        savedWorlds[index] = this.world;
+        localStorage.putItem('minecraft2dWorlds', savedWorlds);
+        console.log("saved world", savedWorlds[index]);
+    }
+
+    loadFromStorage(index) {
+        const savedWorlds = localStorage.getItem('minecraft2dWorlds');
+        if(!savedWorlds) return null;
+        savedWorlds = JSON.parse(savedWorlds);
+        if(!savedWorlds?.[index]) return null;
+        this.entities = savedWorlds[index].entities;
+        this.changedBlocks = savedWorlds[index].changedBlocks;
+        this.seed = savedWorlds[index].seed;
+        console.log("loaded world");
+    }
+
+    get world() {
+        return {
+            entities: this.entities,
+            changedBlocks: this.changedBlocks,
+            seed: this.seed
+        }
     }
 
     loadChunks(fromX, toX, fromY = this.height, toY = 0){
